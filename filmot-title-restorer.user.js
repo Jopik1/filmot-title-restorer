@@ -2,7 +2,7 @@
 // @name         Filmot Title Restorer
 // @namespace    http://tampermonkey.net/
 // @version      0.1
-// @license GPLv3
+// @license      GPLv3
 // @description  Restores titles for removed or private videos in YouTube playlists
 // @author       Jopik
 // @match        https://*.youtube.com/watch*
