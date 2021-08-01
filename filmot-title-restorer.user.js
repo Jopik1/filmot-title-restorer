@@ -12,10 +12,6 @@
 // ==/UserScript==
 
 
-/*--- Create a button in a container div.  It will be styled and
-    positioned with CSS.
-*/
-
 $(document).ready(function() { //When document has loaded
     setTimeout(function() {
         extractIDs();
