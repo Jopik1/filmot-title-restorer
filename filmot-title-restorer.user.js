@@ -65,7 +65,7 @@ function processClick() {
             $(sel).find("#newimg").remove();
             $(sel).find(".ytd-thumbnail").append(newThumb);
             $(sel).find("#img.yt-img-shadow").hide();
-            //attr('src', 'https://filmot.com/vi/' + fetched_details[i].id + '/default.jpg');
+
         }
         $("#TitleRestoredBtn").text(fetched_details.length+ " of " + window.deletedIDCnt + " restored");
     };
