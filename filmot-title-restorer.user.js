@@ -5,18 +5,41 @@
 // @license GPL-3.0-or-later; https://www.gnu.org/licenses/gpl-3.0.txt
 // @description  Restores titles for removed or private videos in YouTube playlists
 // @author       Jopik
-// @match        https://*.youtube.com/watch*
+// @match        https://*.youtube.com/*
 // @icon         https://www.google.com/s2/favicons?domain=filmot.com
 // @grant        unsafeWindow
 // @require      http://code.jquery.com/jquery-3.4.1.min.js
 // ==/UserScript==
 
+document.addEventListener('yt-navigate-start', handleNavigateStart);
+document.addEventListener('yt-navigate-finish', handleNavigateFinish);
+GM_addStyle("filmot_hide { display: none;} filmot_highlight {background-color: #6ab8f7;} ")
 
-$(document).ready(function() { //When document has loaded
-    setTimeout(function() {
-        extractIDs();
-    }, 3000);
-});
+function escapeHTML(unsafe) {
+  return unsafe.replace(
+    /[\u0000-\u002F\u003A-\u0040\u005B-\u0060\u007B-\u00FF]/g,
+    c => '&#' + ('000' + c.charCodeAt(0)).substr(-4, 4) + ';'
+  )
+}
+
+function handleNavigateStart(){
+    cleanUP();
+}
+
+function handleNavigateFinish(){
+    cleanUP();
+    extractIDs();
+}
+
+function cleanUP() {
+    $("#filmot_data").remove();
+    $(".filmot_hide").show();
+    $(".filmot_hide").removeClass("filmot_hide");
+    $(".filmot_newimg").remove();
+    $(".filmot_highlight").css("background-color","");
+    $(".filmot_highlight").removeClass("filmot_highlight");
+    $("#TitleRestoredBtn").remove();
+}
 
 function extractIDs() {
     window.deletedIDs="";
@@ -43,13 +66,10 @@ function extractIDs() {
         window.deletedIDCnt=deletedIDsCnt;
         var r= $('<button id="TitleRestoredBtn">Restore Titles</button>');
         $("#secondary.ytd-watch-flexy").first().prepend(r);
-
         //--- Activate the newly added button.
         document.getElementById ("TitleRestoredBtn").addEventListener (
-            "click", ButtonClickAction, false
-        );
-
-
+                "click", ButtonClickAction, false
+            );
     }
 }
 
@@ -58,19 +78,24 @@ function processClick() {
 
         for (let i = 0; i < fetched_details.length; ++i) {
             var sel="a.ytd-playlist-panel-video-renderer[href*='"+ fetched_details[i].id+"']";
-            $(sel).css("background-color","#6ab8f7");
-            $(sel).find("#video-title").text(fetched_details[i].title);
-            $(sel).find("#byline").text(fetched_details[i].channelname);
-            var newThumb='<img id="newimg" class="style-scope yt-img-shadow" alt="" width="100" src="https://filmot.com/vi/' + fetched_details[i].id + '/default.jpg">';
-            $(sel).find("#newimg").remove();
-            $(sel).find(".ytd-thumbnail").append(newThumb);
-            $(sel).find("#img.yt-img-shadow").hide();
-
+            var item=$(sel);
+            item.css("background-color","#6ab8f7");
+            item.addClass("filmot_highlight");
+            item.find("#video-title").text(fetched_details[i].title);
+            item.find("#byline").text(fetched_details[i].channelname);
+            item.find(".filmot_newimg").remove();
+            var newThumb='<img id="filmot_newimg" class="style-scope yt-img-shadow filmot_newimg" alt="'+ escapeHTML(fetched_details[i].title)+ '" width="100" src="https://filmot.com/vi/' + fetched_details[i].id + '/default.jpg">';
+            item.find("yt-img-shadow.ytd-thumbnail").append(newThumb);
+            item.find("#img.yt-img-shadow").addClass("filmot_hide");
+            item.find("#img.yt-img-shadow").hide();
         }
         $("#TitleRestoredBtn").text(fetched_details.length+ " of " + window.deletedIDCnt + " restored");
     };
 
-    document.body.appendChild(document.createElement('script')).src='https://filmot.com/api/getvideos?callback=window.fetchDoneIDs&js=1&key=md5paNgdbaeudounjp39&id='+ window.deletedIDs;
+    var data=document.createElement('script');
+    data.setAttribute("id","filmot_data");
+    data.src='https://filmot.com/api/getvideos?callback=window.fetchDoneIDs&js=1&key=md5paNgdbaeudounjp39&id='+ window.deletedIDs;
+    document.body.appendChild(data);
 }
 
 function ButtonClickAction (zEvent) {
