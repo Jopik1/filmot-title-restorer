@@ -64,7 +64,7 @@ function extractIDs() {
     if (deletedIDs.length>0) {
         window.deletedIDs=deletedIDs;
         window.deletedIDCnt=deletedIDsCnt;
-        var r= $('<button id="TitleRestoredBtn">Restore Titles</button>');
+        var r= $('<button id="TitleRestoredBtn">Restore Titles</button><center><a href="https://filmot.com" target="_blank">Powered by filmot.com</a><center>');
         $("#container.ytd-playlist-panel-renderer").first().prepend(r);
         document.getElementById ("TitleRestoredBtn").addEventListener (
                 "click", ButtonClickAction, false
