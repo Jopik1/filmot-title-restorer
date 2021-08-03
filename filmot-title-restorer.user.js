@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Filmot Title Restorer
 // @namespace    http://tampermonkey.net/
-// @version      0.2
+// @version      0.21
 // @license GPL-3.0-or-later; https://www.gnu.org/licenses/gpl-3.0.txt
 // @description  Restores titles for removed or private videos in YouTube playlists
 // @author       Jopik
@@ -65,8 +65,7 @@ function extractIDs() {
         window.deletedIDs=deletedIDs;
         window.deletedIDCnt=deletedIDsCnt;
         var r= $('<button id="TitleRestoredBtn">Restore Titles</button>');
-        $("#secondary.ytd-watch-flexy").first().prepend(r);
-        //--- Activate the newly added button.
+        $("#container.ytd-playlist-panel-renderer").first().prepend(r);
         document.getElementById ("TitleRestoredBtn").addEventListener (
                 "click", ButtonClickAction, false
             );
