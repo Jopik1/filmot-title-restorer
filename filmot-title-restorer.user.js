@@ -297,7 +297,7 @@ function processClick(format,nTry)
     .done(function(data) {
     })
     .fail(function(error) {
-        if (nTry>maxTries) {
+        if (nTry>=maxTries) {
             reportAJAXError(apiURL + " " + JSON.stringify(error));
             return;
         }
