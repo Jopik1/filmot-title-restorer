@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Filmot Title Restorer
 // @namespace    http://tampermonkey.net/
-// @version      0.33
+// @version      0.34
 // @license GPL-3.0-or-later; https://www.gnu.org/licenses/gpl-3.0.txt
 // @description  Restores titles for removed or private videos in YouTube playlists
 // @author       Jopik
@@ -18,12 +18,8 @@ document.addEventListener('yt-navigate-start', handleNavigateStart);
 document.addEventListener('yt-navigate-finish', handleNavigateFinish);
 document.addEventListener( 'yt-action', handlePageDataLoad );
 
-GM_addStyle("filmot_hide { display: none;} filmot_highlight {background-color: #b0f2f4;} ");
-
 //fire at least once on load, sometimes handleNavigateFinish on first load yt-navigate-finish already fired before script loads
 handleNavigateFinish();
-
-
 
 function escapeHTML(unsafe) {
   return unsafe.replace(
@@ -114,7 +110,7 @@ function extractIDsFullView() {
                 "click", ButtonClickActionFullView, false
             );
         }
-        processClick(2);
+        processClick(2,0);
     }
     
 }
@@ -285,8 +281,9 @@ function processJSONResultFullView (fetched_details,format)
     $("#TitleRestoredBtn").text(Object.keys(window.RecoveredIDS).length+ " of " + Object.keys(window.DetectedIDS).length + " restored");
 }
 
-function processClick(format)
+function processClick(format,nTry)
 {
+    var maxTries=5;
     var apiURL='https://filmot.com/api/getvideos?key=md5paNgdbaeudounjp39&id='+ window.deletedIDs;
     var jqxhr = $.getJSON(apiURL, function(data) {
         if (format==1) {
@@ -300,7 +297,11 @@ function processClick(format)
     .done(function(data) {
     })
     .fail(function(error) {
-        reportAJAXError(apiURL + " " + JSON.stringify(error));
+        if (nTry>maxTries) {
+            reportAJAXError(apiURL + " " + JSON.stringify(error));
+            return;
+        }
+        processClick(format,nTry+1);
     })
     .always(function() {
     });
@@ -308,12 +309,12 @@ function processClick(format)
 }
 
 function ButtonClickActionSideView (zEvent) {
-    processClick(1);
+    processClick(1,0);
     return false;
 }
 
 function ButtonClickActionFullView (zEvent) {
-    processClick(2);
+    processClick(2,0);
     return false;
 }
 
