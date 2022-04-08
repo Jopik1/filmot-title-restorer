@@ -3,7 +3,14 @@ Tampermonkey user script that restores titles for removed or private videos in Y
 
 
 Changelog:
-    
+
+    08 April 2022
+    Due to a YouTube format change version 0.34 did not work properly and erroneously detected working videos as deleted.
+    Fixed by detecting the channel name which is missing on deleted videos in the current format.
+    Please update to the current version - version 0.35.
+
+
+
     Added support for dark mode (highlight and link color adjust appropriately when script executes)
     
     Added support for full format playlists, For example: https://www.youtube.com/playlist?list=PLgAG0Ep5Hk9IJf24jeDYoYOfJyDFQFkwq
@@ -16,3 +23,4 @@ Changelog:
     Added full title as a tooltip/title
     Switch to fetching data using AJAX instead of injecting a JSONP script (more secure)
     
+
