@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Filmot Title Restorer
 // @namespace    http://tampermonkey.net/
-// @version      0.34
+// @version      0.35
 // @license GPL-3.0-or-later; https://www.gnu.org/licenses/gpl-3.0.txt
 // @description  Restores titles for removed or private videos in YouTube playlists
 // @author       Jopik
@@ -84,7 +84,18 @@ function extractIDsFullView() {
     
     var rendererSelector="a.ytd-playlist-video-renderer";
 	var a=$(rendererSelector).filter(function() {
-        return !$(this).attr('aria-label');
+        if ($(this).attr('aria-label'))
+        {
+            return false;
+        }
+
+        var meta=$(this).parents("#meta");
+        if (meta.length==0) {
+            return false;
+        }
+
+        return meta.find("a.yt-formatted-string").length==0
+        
 	}).each(function( index, element ) {
 		// element == this
 		var href=$(element).attr('href');
