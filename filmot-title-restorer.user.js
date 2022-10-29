@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Filmot Title Restorer
 // @namespace    http://tampermonkey.net/
-// @version      0.35
+// @version      0.36
 // @license GPL-3.0-or-later; https://www.gnu.org/licenses/gpl-3.0.txt
 // @description  Restores titles for removed or private videos in YouTube playlists
 // @author       Jopik
@@ -81,7 +81,7 @@ function extractIDsFullView() {
     window.deletedIDCnt=0;
 	var deletedIDs="";
     var deletedIDsCnt=0;
-    
+
     var rendererSelector="a.ytd-playlist-video-renderer";
 	var a=$(rendererSelector).filter(function() {
         if ($(this).attr('aria-label'))
@@ -95,7 +95,7 @@ function extractIDsFullView() {
         }
 
         return meta.find("a.yt-formatted-string").length==0
-        
+
 	}).each(function( index, element ) {
 		// element == this
 		var href=$(element).attr('href');
@@ -115,15 +115,28 @@ function extractIDsFullView() {
         window.deletedIDCnt=deletedIDsCnt;
         if (document.getElementById ("TitleRestoredBtn")==null)
         {
-            var r= $('<div id="TitleRestoredDiv"><center><button id="TitleRestoredBtn">Restore Titles</button><br><a class="yt-simple-endpoint style-scope yt-formatted-string" href="https://filmot.com" target="_blank">Powered by filmot.com</a></center></div>');
-            $("#items.ytd-playlist-sidebar-renderer").first().prepend(r);
+            var r
+            var metactionbar=$("div.metadata-action-bar");
+            if (metactionbar.length>0)
+            {
+                //NEW YT FORMAT
+                r= $('<div id="TitleRestoredDiv"><center><button id="TitleRestoredBtn">Restore Titles</button><br><a style="color:white;font-size: large;" href="https://filmot.com" target="_blank">Powered by filmot.com</a></center></div>');
+                metactionbar.first().prepend(r);
+            }
+            else
+            {
+               //OLD YT FORMAT
+               r= $('<div id="TitleRestoredDiv"><center><button id="TitleRestoredBtn">Restore Titles</button><br><a class="yt-simple-endpoint style-scope yt-formatted-string" href="https://filmot.com" target="_blank">Powered by filmot.com</a></center></div>');
+               $("#items.ytd-playlist-sidebar-renderer").first().prepend(r);
+            }
+
             document.getElementById ("TitleRestoredBtn").addEventListener (
                 "click", ButtonClickActionFullView, false
             );
         }
         processClick(2,0);
     }
-    
+
 }
 
 
@@ -132,7 +145,7 @@ function extractIDsSideView() {
     window.deletedIDCnt=0;
 	var deletedIDs="";
     var deletedIDsCnt=0;
-   
+
     var rendererSelector="a.ytd-playlist-panel-video-renderer";
 	var a=$(rendererSelector).filter(function() {
 		return $(this).find("#video-title.ytd-playlist-panel-video-renderer[title='']").length>0;
@@ -155,7 +168,7 @@ function extractIDsSideView() {
         window.deletedIDCnt=deletedIDsCnt;
         if (document.getElementById ("TitleRestoredBtn")==null)
         {
-            var r= $('<div id="TitleRestoredDiv"><center><button id="TitleRestoredBtn">Restore Titles</button><br><a class="yt-simple-endpoint style-scope yt-formatted-string" href="https://filmot.com" target="_blank">Powered by filmot.com</a></center></div>');
+            var r= $('<div id="TitleRestoredDiv"><center><button id="TitleRestoredBtn">Restore Titles</button><br><a style="color:white;font-size:medium;" href="https://filmot.com" target="_blank">Powered by filmot.com</a></center></div>');
             $("#container.ytd-playlist-panel-renderer").first().prepend(r);
             document.getElementById ("TitleRestoredBtn").addEventListener (
                 "click", ButtonClickActionSideView, false
@@ -242,6 +255,7 @@ function processJSONResultFullView (fetched_details,format)
 
     for (let i = 0; i < fetched_details.length; ++i) {
         var meta=fetched_details[i];
+
         window.RecoveredIDS[meta.id]=1;
         var escapedTitle=escapeHTML(meta.title);
 
@@ -250,11 +264,14 @@ function processJSONResultFullView (fetched_details,format)
         }
 
         var rendererSelector="#container.ytd-playlist-video-renderer";
+
         var a=$(rendererSelector).filter(function() {
             return $(this).find("a.ytd-playlist-video-renderer[href*='"+ meta.id+"']").length>0;
         }).each(function( index, element ) {
             // element == this
             var item=$(element);
+
+
 
             item.addClass("filmot_highlight");
 
