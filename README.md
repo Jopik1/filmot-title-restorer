@@ -4,6 +4,9 @@ Tampermonkey user script that restores titles for removed or private videos in Y
 
 Changelog:
 
+    29 October 2022
+    Fixed to work with new YouTube layout. Should work with both new layout and the old layout.
+    
     08 April 2022
     Due to a YouTube format change version 0.34 did not work properly and erroneously detected working videos as deleted.
     Fixed by detecting the channel name which is missing on deleted videos in the current format.
