@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Filmot Title Restorer
 // @namespace    http://tampermonkey.net/
-// @version      0.36
+// @version      0.37
 // @license GPL-3.0-or-later; https://www.gnu.org/licenses/gpl-3.0.txt
 // @description  Restores titles for removed or private videos in YouTube playlists
 // @author       Jopik
@@ -82,32 +82,38 @@ function extractIDsFullView() {
 	var deletedIDs="";
     var deletedIDsCnt=0;
 
-    var rendererSelector="a.ytd-playlist-video-renderer";
+    var rendererSelector="h3.ytd-playlist-video-renderer";
 	var a=$(rendererSelector).filter(function() {
+
         if ($(this).attr('aria-label'))
         {
             return false;
         }
 
+
         var meta=$(this).parents("#meta");
         if (meta.length==0) {
             return false;
         }
-
-        return meta.find("a.yt-formatted-string").length==0
+        return true;
 
 	}).each(function( index, element ) {
 		// element == this
-		var href=$(element).attr('href');
-		var id=String(href.match(/v=[0-9A-Za-z_\-]*/gm));
-		id=id.substring(2);
-        window.DetectedIDS[id]=1;
-		if (deletedIDs.length>0)
-        {
-            deletedIDs+=",";
+		var ahref= $(this).children("a.yt-simple-endpoint");
+
+        if (ahref.length>0) {
+            var href=ahref.attr("href");
+            var id=String(href.match(/v=[0-9A-Za-z_\-]*/gm));
+
+            id=id.substring(2);
+            window.DetectedIDS[id]=1;
+            if (deletedIDs.length>0)
+            {
+                deletedIDs+=",";
+            }
+            deletedIDs+=id;
+            deletedIDsCnt++;
         }
-		deletedIDs+=id;
-        deletedIDsCnt++;
 	});
 
     if (deletedIDs.length>0) {
@@ -201,6 +207,7 @@ function processJSONResultSideView (fetched_details,format)
 {
     var darkMode=-1;
 
+
     for (let i = 0; i < fetched_details.length; ++i) {
         var meta=fetched_details[i];
         window.RecoveredIDS[meta.id]=1;
@@ -272,7 +279,6 @@ function processJSONResultFullView (fetched_details,format)
             var item=$(element);
 
 
-
             item.addClass("filmot_highlight");
 
             var titleItem=item.find("#video-title");
@@ -280,6 +286,7 @@ function processJSONResultFullView (fetched_details,format)
             titleItem.attr("title",meta.title);
             titleItem.attr("aria-label",meta.title);
             titleItem.addClass("filmot_title");
+
 
             if (darkMode==-1)
             {
@@ -298,9 +305,9 @@ function processJSONResultFullView (fetched_details,format)
             item.find("#byline-container").attr("hidden",false);
             item.find(".filmot_newimg").remove();
             var newThumb='<img id="filmot_newimg" class="style-scope yt-img-shadow filmot_newimg" onclick="prompt(\'Full Title\', \''+ escapedTitle+ '\'); event.stopPropagation(); return false;" title="' + escapedTitle + '" width="100" src="https://filmot.com/vi/' + meta.id + '/default.jpg">';
-            item.find("yt-img-shadow.ytd-thumbnail").append(newThumb);
-            item.find("#img.yt-img-shadow").addClass("filmot_hide");
-            item.find("#img.yt-img-shadow").hide();
+            item.find("yt-image").append(newThumb);
+            item.find("img.yt-core-image").addClass("filmot_hide");
+            item.find("img.yt-core-image").hide();
 
         });
 
