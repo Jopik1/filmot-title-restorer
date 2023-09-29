@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Filmot Title Restorer
 // @namespace    http://tampermonkey.net/
-// @version      0.37
+// @version      0.38
 // @license GPL-3.0-or-later; https://www.gnu.org/licenses/gpl-3.0.txt
 // @description  Restores titles for removed or private videos in YouTube playlists
 // @author       Jopik
@@ -58,10 +58,13 @@ function handleNavigateFinish(){
     {
         setTimeout(function(){ extractIDsFullView(); }, 500);
     }
-    else
+
+    if (window.location.href.indexOf("/watch?")>0)
     {
-        setTimeout(function(){ extractIDsSideView(); }, 500);
+        setTimeout(function(){ checkIfPrivatedOrRemoved(); }, 500);
     }
+
+   
 }
 
 function cleanUP() {
@@ -74,6 +77,21 @@ function cleanUP() {
     $(".filmot_c_link").remove();
     window.RecoveredIDS={};
     window.DetectedIDS={};
+}
+
+function checkIfPrivatedOrRemoved() {
+    
+    if (window.ytInitialPlayerResponse.playabilityStatus.status=="ERROR") {
+        //console.log("ERROR");
+        var id=window.ytInitialData.currentVideoEndpoint.watchEndpoint.videoId;
+        if (id.length>=11) {
+            //console.log(id);
+            window.deletedIDs=id;
+            window.deletedIDCnt=1;
+            window.DetectedIDS[id]=1;
+            processClick(2,0);
+        }
+    }
 }
 
 function extractIDsFullView() {
@@ -103,18 +121,21 @@ function extractIDsFullView() {
 
         if (ahref.length>0) {
             var href=ahref.attr("href");
+            var checked=ahref.attr("filmot_chk");
             var id=String(href.match(/v=[0-9A-Za-z_\-]*/gm));
 
             id=id.substring(2);
-            window.DetectedIDS[id]=1;
-            if (deletedIDs.length>0)
-            {
-                deletedIDs+=",";
+            if (id.length>=11 && !(checked)) {
+                ahref.attr("filmot_chk","1");
+                window.DetectedIDS[id]=1;
+                if (deletedIDs.length>0) {
+                    deletedIDs+=",";
+                }
+                deletedIDs+=id;
+                deletedIDsCnt++;
             }
-            deletedIDs+=id;
-            deletedIDsCnt++;
         }
-	});
+    });
 
     if (deletedIDs.length>0) {
         window.deletedIDs=deletedIDs;
@@ -140,47 +161,9 @@ function extractIDsFullView() {
                 "click", ButtonClickActionFullView, false
             );
         }
-        processClick(2,0);
+        processClick(1,0);
     }
 
-}
-
-
-function extractIDsSideView() {
-    window.deletedIDs="";
-    window.deletedIDCnt=0;
-	var deletedIDs="";
-    var deletedIDsCnt=0;
-
-    var rendererSelector="a.ytd-playlist-panel-video-renderer";
-	var a=$(rendererSelector).filter(function() {
-		return $(this).find("#video-title.ytd-playlist-panel-video-renderer[title='']").length>0;
-	}).each(function( index, element ) {
-		// element == this
-		var href=$(element).attr('href');
-		var id=String(href.match(/v=[0-9A-Za-z_\-]*/gm));
-		id=id.substring(2);
-        window.DetectedIDS[id]=1;
-		if (deletedIDs.length>0)
-        {
-            deletedIDs+=",";
-        }
-		deletedIDs+=id;
-        deletedIDsCnt++;
-	});
-
-    if (deletedIDs.length>0) {
-        window.deletedIDs=deletedIDs;
-        window.deletedIDCnt=deletedIDsCnt;
-        if (document.getElementById ("TitleRestoredBtn")==null)
-        {
-            var r= $('<div id="TitleRestoredDiv"><center><button id="TitleRestoredBtn">Restore Titles</button><br><a style="color:white;font-size:medium;" href="https://filmot.com" target="_blank">Powered by filmot.com</a></center></div>');
-            $("#container.ytd-playlist-panel-renderer").first().prepend(r);
-            document.getElementById ("TitleRestoredBtn").addEventListener (
-                "click", ButtonClickActionSideView, false
-            );
-        }
-    }
 }
 
 function reportAJAXError(error)
@@ -203,58 +186,38 @@ function rgb2lum(rgb)
     return 1;
 }
 
-function processJSONResultSideView (fetched_details,format)
+function processJSONResultSingleVideo(fetched_details,format)
 {
     var darkMode=-1;
-
-
+    //console.log(fetched_details);
     for (let i = 0; i < fetched_details.length; ++i) {
         var meta=fetched_details[i];
-        window.RecoveredIDS[meta.id]=1;
+
         var escapedTitle=escapeHTML(meta.title);
-        if (meta.channelname==null) {
-            meta.channelname=fetched_details[i].channelid;
+
+        var item=$("div.promo-message").first();
+
+        if (!window.RecoveredIDS[meta.id]==1) {
+            window.RecoveredIDS[meta.id]=1;
+
+            if (meta.channelname==null) {
+                meta.channelname=fetched_details[i].channelid;
+            }
+
+            var poweredByFilmot='<a style="font-size: large;" class="yt-simple-endpoint style-scope yt-formatted-string" href="https://filmot.com" target="_blank">Title and Channel from filmot.com</a>';
+            item.append(poweredByFilmot);
+
+            var titleLink="<h2>Title: <a class='filmot_c_link yt-simple-endpoint style-scope yt-formatted-string' dir='auto' href='https://filmot.com/video/" +meta.id + "'>" + escapedTitle + "</a></h2>";
+            item.append(titleLink);
+
+            var channelLink="<h2>Channel: <a class='filmot_c_link yt-simple-endpoint style-scope yt-formatted-string' dir='auto' href='https://www.youtube.com/channel/" +meta.channelid + "'>" + escapeHTML(meta.channelname) + "</a></h2>";
+            item.append(channelLink);
+
+            var newThumb='<img id="filmot_newimg" class="style-scope yt-img-shadow filmot_newimg" onclick="prompt(\'Full Title\', \''+ escapedTitle+ '\'); event.stopPropagation(); return false;" title="' + escapedTitle + '" width="320" src="https://filmot.com/vi/' + meta.id + '/default.jpg">';
+            item.append(newThumb);
         }
-
-
-        var sel="a.ytd-playlist-panel-video-renderer[href*='"+ meta.id+"']";
-        var item=$(sel);
-
-        //console.log(item);
-
-        item.addClass("filmot_highlight");
-
-        var titleItem=item.find("#video-title");
-        titleItem.text(meta.title);
-        titleItem.attr("title",meta.title);
-        titleItem.attr("aria-label",meta.title);
-        titleItem.addClass("filmot_title");
-
-
-        if (darkMode==-1)
-        {
-            var lum=rgb2lum(titleItem.css("color"));
-            darkMode = (lum>0.51)?1:0; //if text is bright it means we are in dark mode
-        }
-
-        item.css("background-color",(darkMode==0)?lightModeBackground:darkModeBackground);
-
-        var channelItem=item.find("#byline");
-
-        channelItem.text(fetched_details[i].channelname);
-        channelItem.attr("onclick","window.open('https://www.youtube.com/channel/" +fetched_details[i].channelid + "', '_blank'); event.stopPropagation(); return false;");
-        channelItem.addClass("filmot_channel");
-
-        item.find(".filmot_newimg").remove();
-        var newThumb='<img id="filmot_newimg" class="style-scope yt-img-shadow filmot_newimg" onclick="prompt(\'Full Title\', \''+ escapedTitle+ '\'); event.stopPropagation(); return false;" title="' + escapedTitle + '" width="100" src="https://filmot.com/vi/' + meta.id + '/default.jpg">';
-        item.find("yt-img-shadow.ytd-thumbnail").append(newThumb);
-        item.find("#img.yt-img-shadow").addClass("filmot_hide");
-        item.find("#img.yt-img-shadow").hide();
     }
-
-    $("#TitleRestoredBtn").text(Object.keys(window.RecoveredIDS).length+ " of " +Object.keys(window.DetectedIDS).length + " restored");
 }
-
 
 function processJSONResultFullView (fetched_details,format)
 {
@@ -322,11 +285,9 @@ function processClick(format,nTry)
     var apiURL='https://filmot.com/api/getvideos?key=md5paNgdbaeudounjp39&id='+ window.deletedIDs;
     var jqxhr = $.getJSON(apiURL, function(data) {
         if (format==1) {
-            processJSONResultSideView(data,format);
-        }
-        else
-        {
             processJSONResultFullView(data,format);
+        } else if (format==2) {
+            processJSONResultSingleVideo(data,format);
         }
     })
     .done(function(data) {
@@ -341,11 +302,6 @@ function processClick(format,nTry)
     .always(function() {
     });
 
-}
-
-function ButtonClickActionSideView (zEvent) {
-    processClick(1,0);
-    return false;
 }
 
 function ButtonClickActionFullView (zEvent) {
