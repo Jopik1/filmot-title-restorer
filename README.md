@@ -4,6 +4,12 @@ Tampermonkey user script that restores titles for removed or private videos in Y
 
 Changelog:
 
+    29 September 2023
+    Cleanup.
+    Fixed bug with continuation not working after YT format change.
+    Added support for displaying video metadata on single deleted video page (i.e. /watch endpoint).
+
+
     29 October 2022
     Fixed to work with new YouTube layout. Should work with both new layout and the old layout.
     
