@@ -4,6 +4,13 @@ Tampermonkey user script that restores titles for removed or private videos in Y
 
 Changelog:
 
+    27 August 2024
+    Fixed to work with Chrome v3 manifest update and YT layout changes
+    Replaced jquery with cash.min.js to avoid Chrome TrustedHTML errors
+    Fixed element placement for YT layout changes
+    Replaced injection of raw HTML with v3 supported operations
+
+
     29 September 2023
     Cleanup.
     Fixed bug with continuation not working after YT format change.
