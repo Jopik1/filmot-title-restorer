@@ -6,7 +6,7 @@ Changelog:
     27 October 2024
     Fixed to work with YT layout changes.
     Fixed placement of information for single video pages where sign in was requested for private videos or where the channel was still alive.
-
+ 
     27 August 2024
     Fixed to work with Chrome v3 manifest update and YT layout changes
     Replaced jquery with cash.min.js to avoid Chrome TrustedHTML errors
