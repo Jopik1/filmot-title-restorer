@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Filmot Title Restorer
 // @namespace    http://tampermonkey.net/
-// @version      0.39
+// @version      0.40
 // @license GPL-3.0-or-later; https://www.gnu.org/licenses/gpl-3.0.txt
 // @description  Restores titles for removed or private videos in YouTube playlists
 // @author       Jopik
@@ -79,8 +79,8 @@ function cleanUP() {
 }
 
 function checkIfPrivatedOrRemoved() {
-
-    if (window.ytInitialPlayerResponse.playabilityStatus.status=="ERROR") {
+    var status=window.ytInitialPlayerResponse.playabilityStatus.status;
+    if (status=="ERROR" || status=="LOGIN_REQUIRED") {
         var id=window.ytInitialData.currentVideoEndpoint.watchEndpoint.videoId;
         if (id.length>=11) {
             window.deletedIDs=id;
@@ -92,7 +92,7 @@ function checkIfPrivatedOrRemoved() {
 }
 
   function createRestoreButton() {
-        var metactionbar = document.querySelector("div.metadata-action-bar");
+        var metactionbar = document.querySelector('div.page-header-view-model-wiz__page-header-content > div.page-header-view-model-wiz__page-header-headline-info > yt-description-preview-view-model');
         if (metactionbar) {
             // Create the container div
             var containerDiv = document.createElement('div');
@@ -175,15 +175,7 @@ function extractIDsFullView() {
         window.deletedIDCnt=deletedIDsCnt;
         if (document.getElementById ("TitleRestoredBtn")==null)
         {
-            var r;
-            var metactionbar=$("div.metadata-action-bar");
-            if (metactionbar.length>0)
-            {
-                //NEW YT FORMAT
-                //r= $('<div id="TitleRestoredDiv"><center><button id="TitleRestoredBtn">Restore Titles</button><br><a style="color:white;font-size: large;" href="https://filmot.com" target="_blank">Powered by filmot.com</a></center></div>');
-                //metactionbar.first().prepend(r);
-                createRestoreButton();
-            }
+            createRestoreButton();
 
             document.getElementById ("TitleRestoredBtn").addEventListener (
                 "click", ButtonClickActionFullView, false
@@ -216,11 +208,17 @@ function rgb2lum(rgb)
 
 function processJSONResultSingleVideo(fetched_details, format) {
     var darkMode = -1;
-
     for (let i = 0; i < fetched_details.length; ++i) {
         var meta = fetched_details[i];
         var escapedTitle = meta.title;
-        var item = $("div.promo-message").first();
+
+        // dead channel
+        item = $("div.promo-message").first();
+        if (item.length === 0) {
+            //location for deleted/privated videos where channel is still alive
+            var item = $("#subreason.yt-player-error-message-renderer").first();
+
+        }
 
         if (darkMode == -1) {
           var lum = rgb2lum(item.css("color"));
@@ -234,6 +232,9 @@ function processJSONResultSingleVideo(fetched_details, format) {
             }
 
             // Create "Powered by Filmot" link
+            var brEl = document.createElement('br');
+            item[0].appendChild(brEl);
+
             var poweredByFilmot = document.createElement('a');
             poweredByFilmot.style.fontSize = 'large';
             poweredByFilmot.className = 'yt-simple-endpoint style-scope yt-formatted-string';
@@ -355,7 +356,7 @@ function processJSONResultFullView(fetched_details, format) {
 }
 
 function processClick(format, nTry) {
-    var maxTries = 5;
+    var maxTries = 2;
     var apiURL = 'https://filmot.com/api/getvideos?key=md5paNgdbaeudounjp39&id=' + window.deletedIDs;
     fetch(apiURL)
         .then(response => {
