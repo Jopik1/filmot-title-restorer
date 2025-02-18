@@ -91,38 +91,52 @@ function checkIfPrivatedOrRemoved() {
     }
 }
 
-  function createRestoreButton() {
-        var metactionbar = document.querySelector('div.page-header-view-model-wiz__page-header-content > div.page-header-view-model-wiz__page-header-headline-info > yt-description-preview-view-model');
-        if (metactionbar) {
-            // Create the container div
-            var containerDiv = document.createElement('div');
-            containerDiv.id = 'TitleRestoredDiv';
-            containerDiv.style.textAlign = 'center';
+function createRestoreButton() {
 
-            // Create the button
-            var button = document.createElement('button');
-            button.id = 'TitleRestoredBtn';
-            button.textContent = 'Restore Titles';
+    // Time to create the 'Restore Titles' button in the Playlist Description Box (left side pane, beneath playlist thumbnail)
+    console.log("[Filmot] [DEBUG] Creating 'Restore Titles' button in playlist description box.");
 
-            // Create the link
-            var link = document.createElement('a');
-            link.href = 'https://filmot.com';
-            link.target = '_blank';
-            link.style.color = 'white';
-            link.style.fontSize = 'large';
-            link.textContent = 'Powered by filmot.com';
+    // For some reason, YouTube (or a browser plugin) sometimes creates one or more duplicate, commented-out Description Boxes.
+    // Therefore, we locate all Playlist Description Box elements, and filter out the commented ones.
+    var metactionbars = Array.from(document.querySelectorAll('div.page-header-view-model-wiz__page-header-content > div.page-header-view-model-wiz__page-header-headline-info')).filter(el => el.offsetParent !== null);
 
-            // Assemble the elements
-            containerDiv.appendChild(button);
-            containerDiv.appendChild(document.createElement('br'));
-            containerDiv.appendChild(link);
+    // Select the first instance (the top of the Description Box)
+    var metactionbar = metactionbars[0];
 
-            // Insert the container at the beginning of metactionbar
-            metactionbar.insertBefore(containerDiv, metactionbar.firstChild);
-        }
+    if (metactionbar) {
+
+        // Create the container div
+        var containerDiv = document.createElement('div');
+        containerDiv.id = 'TitleRestoredDiv';
+        containerDiv.style.textAlign = 'center';
+
+        // Create the button
+        var button = document.createElement('button');
+        button.id = 'TitleRestoredBtn';
+        button.textContent = 'Restore Titles';
+
+        // Create the link
+        var link = document.createElement('a');
+        link.href = 'https://filmot.com';
+        link.target = '_blank';
+        link.style.color = 'white';
+        link.style.fontSize = 'large';
+        link.textContent = 'Powered by filmot.com';
+
+        // Assemble the elements
+        containerDiv.appendChild(document.createElement('br'));
+        containerDiv.appendChild(button);
+        containerDiv.appendChild(document.createElement('br'));
+        containerDiv.appendChild(link);
+
+        // Insert the container at the beginning of metactionbar
+        metactionbar.insertBefore(containerDiv, metactionbar.firstChild);
     }
 
+}
+
 function extractIDsFullView() {
+
     window.deletedIDs="";
     window.deletedIDCnt=0;
 	var deletedIDs="";
@@ -136,7 +150,6 @@ function extractIDsFullView() {
         {
             return false;
         }
-
 
 
         var meta=$(this).parents("#meta");
@@ -171,17 +184,31 @@ function extractIDsFullView() {
     });
 
     if (deletedIDs.length>0) {
+
         window.deletedIDs=deletedIDs;
+
         window.deletedIDCnt=deletedIDsCnt;
+
+        // If there are titles to be restored...
+
         if (document.getElementById ("TitleRestoredBtn")==null)
         {
+
+            console.log("[Filmot] [DEBUG] There are " + deletedIDsCnt + " titles to restore.");
+
+            // Add the 'restore titles' button in the playlist info/description pane
             createRestoreButton();
 
-            document.getElementById ("TitleRestoredBtn").addEventListener (
-                "click", ButtonClickActionFullView, false
-            );
+            /*
+
+            document.getElementById ("TitleRestoredBtn").addEventListener ("click", ButtonClickActionFullView, false);
+
+            */
         }
+
         processClick(1,0);
+
+
     }
 
 }
@@ -356,8 +383,10 @@ function processJSONResultFullView(fetched_details, format) {
 }
 
 function processClick(format, nTry) {
+
     var maxTries = 2;
     var apiURL = 'https://filmot.com/api/getvideos?key=md5paNgdbaeudounjp39&id=' + window.deletedIDs;
+
     fetch(apiURL)
         .then(response => {
             if (!response.ok) {
@@ -386,6 +415,7 @@ function processClick(format, nTry) {
         .finally(() => {
             // This function will be called regardless of success or failure
         });
+
 }
 function ButtonClickActionFullView (zEvent) {
     processClick(2,0);
