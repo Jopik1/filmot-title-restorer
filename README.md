@@ -3,6 +3,7 @@ Tampermonkey user script that restores titles for removed or private videos in Y
 
 
 Changelog:
+
     18 February 2025
     Merged Samg381 fix for "restore button not appearing on Firefox"
     
