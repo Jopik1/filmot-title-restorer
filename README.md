@@ -3,7 +3,9 @@ Tampermonkey user script that restores titles for removed or private videos in Y
 
 
 Changelog:
-
+    18 February 2025
+    Merged Samg381 fix for "restore button not appearing on Firefox"
+    
     27 October 2024
     Fixed to work with YT layout changes.
     Fixed placement of information for single video pages where sign in was requested for private videos or where the channel was still alive.
