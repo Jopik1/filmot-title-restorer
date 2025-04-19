@@ -98,7 +98,7 @@ function createRestoreButton() {
 
     // For some reason, YouTube (or a browser plugin) sometimes creates one or more duplicate, commented-out Description Boxes.
     // Therefore, we locate all Playlist Description Box elements, and filter out the commented ones.
-    var metactionbars = Array.from(document.querySelectorAll('div.page-header-view-model-wiz__page-header-content > div.page-header-view-model-wiz__page-header-headline-info')).filter(el => el.offsetParent !== null);
+    var metactionbars = Array.from(document.querySelectorAll('div.page-header-view-model-wiz__page-header-content > div.page-header-view-model-wiz__page-header-headline-info, .play-menu.ytd-playlist-header-renderer')).filter(el => el.offsetParent !== null);
 
     // Select the first instance (the top of the Description Box)
     var metactionbar = metactionbars[0];
@@ -109,6 +109,7 @@ function createRestoreButton() {
         var containerDiv = document.createElement('div');
         containerDiv.id = 'TitleRestoredDiv';
         containerDiv.style.textAlign = 'center';
+        containerDiv.style.marginBottom = '20px';
 
         // Create the button
         var button = document.createElement('button');
@@ -130,7 +131,11 @@ function createRestoreButton() {
         containerDiv.appendChild(link);
 
         // Insert the container at the beginning of metactionbar
-        metactionbar.insertBefore(containerDiv, metactionbar.firstChild);
+        if (Array.from(metactionbar.classList).includes('ytd-playlist-header-renderer')) {
+          metactionbar.parentNode.insertBefore(containerDiv, metactionbar.nextSibling);
+        } else {
+          metactionbar.insertBefore(containerDiv, metactionbar.firstChild);
+        }
     }
 
 }
