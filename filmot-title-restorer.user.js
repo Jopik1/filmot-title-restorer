@@ -101,7 +101,7 @@ function createRestoreButton() {
     // Therefore, we locate all Playlist Description Box elements where 'restore titles' buttons can be placed, and place them in an array.
     // This is admittedly a scorched-earth method, but I am tired of YouTube constantly changing element IDs and breaking this.
     //
-    var metactionbars = Array.from(document.querySelectorAll('div.page-header-view-model-wiz__page-header-content > div.page-header-view-model-wiz__page-header-headline-info, .play-menu.ytd-playlist-header-renderer, page-header-view-model-wiz__page-header-headline-info')).filter(el => el.offsetParent !== null);
+    var metactionbars = Array.from(document.querySelectorAll('.description.style-scope.ytd-playlist-header-renderer, page-header-view-model-wiz__page-header-headline-info')).filter(el => el.offsetParent !== null);
     //        ^^^^^ UPDATE THIS WHEN YOUTUBE BREAKS SIDEBAR ELEMENT IDs ^^^^^
     //
     /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
