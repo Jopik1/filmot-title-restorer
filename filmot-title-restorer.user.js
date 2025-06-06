@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Filmot Title Restorer
 // @namespace    http://tampermonkey.net/
-// @version      0.41
+// @version      0.40
 // @license GPL-3.0-or-later; https://www.gnu.org/licenses/gpl-3.0.txt
 // @description  Restores titles for removed or private videos in YouTube playlists
 // @author       Jopik
@@ -25,10 +25,10 @@ document.addEventListener( 'yt-action', handlePageDataLoad );
 handleNavigateFinish();
 
 function escapeHTML(unsafe) {
-  return unsafe.replace(
-    /[\u0000-\u002F\u003A-\u0040\u005B-\u0060\u007B-\u00FF]/g,
-    c => '&#' + ('000' + c.charCodeAt(0)).substr(-4, 4) + ';'
-  )
+    return unsafe.replace(
+        /[\u0000-\u002F\u003A-\u0040\u005B-\u0060\u007B-\u00FF]/g,
+        c => '&#' + ('000' + c.charCodeAt(0)).substr(-4, 4) + ';'
+    )
 }
 
 function handlePageDataLoad(event){
@@ -98,39 +98,49 @@ function createRestoreButton() {
 
     // For some reason, YouTube (or a browser plugin) sometimes creates one or more duplicate, commented-out Description Boxes.
     // Therefore, we locate all Playlist Description Box elements, and filter out the commented ones.
-    var metactionbars = Array.from(document.querySelectorAll('div.page-header-view-model-wiz__page-header-content > div.page-header-view-model-wiz__page-header-headline-info')).filter(el => el.offsetParent !== null);
+    var metactionbars = document.getElementsByClassName('page-header-view-model-wiz__page-header-headline-info');
 
     // Select the first instance (the top of the Description Box)
-    var metactionbar = metactionbars[0];
 
-    if (metactionbar) {
+    if (metactionbars) {
 
-        // Create the container div
-        var containerDiv = document.createElement('div');
-        containerDiv.id = 'TitleRestoredDiv';
-        containerDiv.style.textAlign = 'center';
+        for (var i = 4; i < metactionbars.length; i++) {
 
-        // Create the button
-        var button = document.createElement('button');
-        button.id = 'TitleRestoredBtn';
-        button.textContent = 'Restore Titles';
+            console.log("[Filmot] [DEBUG] Sucessfully located playlist sidebar.");
 
-        // Create the link
-        var link = document.createElement('a');
-        link.href = 'https://filmot.com';
-        link.target = '_blank';
-        link.style.color = 'white';
-        link.style.fontSize = 'large';
-        link.textContent = 'Powered by filmot.com';
+            // Create the container div
+            var containerDiv = document.createElement('div');
+            containerDiv.id = 'TitleRestoredDiv';
+            containerDiv.style.textAlign = 'center';
 
-        // Assemble the elements
-        containerDiv.appendChild(document.createElement('br'));
-        containerDiv.appendChild(button);
-        containerDiv.appendChild(document.createElement('br'));
-        containerDiv.appendChild(link);
+            // Create the button
+            var button = document.createElement('button');
+            button.id = 'TitleRestoredBtn';
+            button.textContent = 'Restore Titles';
 
-        // Insert the container at the beginning of metactionbar
-        metactionbar.insertBefore(containerDiv, metactionbar.firstChild);
+            // Create the link
+            var link = document.createElement('a');
+            link.href = 'https://filmot.com';
+            link.target = '_blank';
+            link.style.color = 'white';
+            link.style.fontSize = 'large';
+            link.textContent = 'Powered by filmot.com';
+
+            // Assemble the elements
+            containerDiv.appendChild(document.createElement('br'));
+            containerDiv.appendChild(button);
+            containerDiv.appendChild(document.createElement('br'));
+            containerDiv.appendChild(link);
+
+            // Insert the container at the beginning of metactionbar
+            metactionbars[i].insertBefore(containerDiv, metactionbars[i].firstChild);
+        }
+
+    }
+    else {
+
+        console.log("[Filmot] [DEBUG] ERROR: Could not locate playlist sidebar to place restore button.");
+
     }
 
 }
@@ -139,11 +149,11 @@ function extractIDsFullView() {
 
     window.deletedIDs="";
     window.deletedIDCnt=0;
-	var deletedIDs="";
+    var deletedIDs="";
     var deletedIDsCnt=0;
 
     var rendererSelector="h3.ytd-playlist-video-renderer";
-	var a=$(rendererSelector).filter(function() {
+    var a=$(rendererSelector).filter(function() {
 
 
         if ($(this).attr('aria-label'))
@@ -158,10 +168,10 @@ function extractIDsFullView() {
         }
         return true;
 
-	}).each(function( index, element ) {
-		// element == this
+    }).each(function( index, element ) {
+        // element == this
 
-		var ahref= $(this).children("a.yt-simple-endpoint");
+        var ahref= $(this).children("a.yt-simple-endpoint");
 
         if (ahref.length>0) {
             var href=ahref.attr("href");
@@ -248,8 +258,8 @@ function processJSONResultSingleVideo(fetched_details, format) {
         }
 
         if (darkMode == -1) {
-          var lum = rgb2lum(item.css("color"));
-          darkMode = (lum > 0.51) ? 1 : 0; //if text is bright it means we are in dark mode
+            var lum = rgb2lum(item.css("color"));
+            darkMode = (lum > 0.51) ? 1 : 0; //if text is bright it means we are in dark mode
         }
 
         if (!window.RecoveredIDS[meta.id]) {
@@ -389,32 +399,32 @@ function processClick(format, nTry) {
 
     fetch(apiURL)
         .then(response => {
-            if (!response.ok) {
-                throw new Error('Network response was not ok');
-            }
-            return response.json();
-        })
+        if (!response.ok) {
+            throw new Error('Network response was not ok');
+        }
+        return response.json();
+    })
         .then(data => {
-            if (format == 1) {
-                processJSONResultFullView(data, format);
-            } else if (format == 2) {
-                processJSONResultSingleVideo(data, format);
-            }
-        })
+        if (format == 1) {
+            processJSONResultFullView(data, format);
+        } else if (format == 2) {
+            processJSONResultSingleVideo(data, format);
+        }
+    })
         .catch(error => {
-            if (nTry >= maxTries) {
-                console.error("filmot fetch error:", error);
-                console.error("filmot fetch message:", error.message);
-                console.error("filmot fetch stack:", error.stack);
+        if (nTry >= maxTries) {
+            console.error("filmot fetch error:", error);
+            console.error("filmot fetch message:", error.message);
+            console.error("filmot fetch stack:", error.stack);
 
-                reportAJAXError(apiURL + " " + JSON.stringify(error));
-                return;
-            }
-            processClick(format, nTry + 1);
-        })
+            reportAJAXError(apiURL + " " + JSON.stringify(error));
+            return;
+        }
+        processClick(format, nTry + 1);
+    })
         .finally(() => {
-            // This function will be called regardless of success or failure
-        });
+        // This function will be called regardless of success or failure
+    });
 
 }
 function ButtonClickActionFullView (zEvent) {
