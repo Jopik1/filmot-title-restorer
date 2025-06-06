@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Filmot Title Restorer
 // @namespace    http://tampermonkey.net/
-// @version      0.43
+// @version      0.42
 // @license GPL-3.0-or-later; https://www.gnu.org/licenses/gpl-3.0.txt
 // @description  Restores titles for removed or private videos in YouTube playlists
 // @author       Jopik
@@ -96,17 +96,13 @@ function createRestoreButton() {
     // Time to create the 'Restore Titles' button in the Playlist Description Box (left side pane, beneath playlist thumbnail)
     console.log("[Filmot] [DEBUG] Creating 'Restore Titles' button in playlist description box.");
 
-    /////////////////////////////////////////////// PLEASE READ /////////////////////////////////////////////////////////////////////////////
+    /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
     // For some reason, YouTube (or a browser plugin) sometimes creates one or more duplicate, commented-out Description Boxes.
     // Therefore, we locate all Playlist Description Box elements where 'restore titles' buttons can be placed, and place them in an array.
     // This is admittedly a scorched-earth method, but I am tired of YouTube constantly changing element IDs and breaking this.
     //
-    var metactionbars = Array.from(document.querySelectorAll('.description.style-scope.ytd-playlist-header-renderer, page-header-view-model-wiz__page-header-headline-info')).filter(el => el.offsetParent !== null);
+    var metactionbars = Array.from(document.querySelectorAll('div.page-header-view-model-wiz__page-header-content > div.page-header-view-model-wiz__page-header-headline-info, .play-menu.ytd-playlist-header-renderer, page-header-view-model-wiz__page-header-headline-info')).filter(el => el.offsetParent !== null);
     //        ^^^^^ UPDATE THIS WHEN YOUTUBE BREAKS SIDEBAR ELEMENT IDs ^^^^^
-    //
-    // Note for updaters in the future: This list of descendant selectors can be cleverly structured to add redundancy.
-    //                                  The below logic will search for the first valid location to place a button.
-    //                                  You can add multiple selectors. If one fails (YouTube UI update), the next valid one will be used.
     //
     /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
