@@ -96,17 +96,30 @@ function createRestoreButton() {
     // Time to create the 'Restore Titles' button in the Playlist Description Box (left side pane, beneath playlist thumbnail)
     console.log("[Filmot] [DEBUG] Creating 'Restore Titles' button in playlist description box.");
 
+    /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
     // For some reason, YouTube (or a browser plugin) sometimes creates one or more duplicate, commented-out Description Boxes.
-    // Therefore, we locate all Playlist Description Box elements, and filter out the commented ones.
+    // Therefore, we locate all Playlist Description Box elements where 'restore titles' buttons can be placed, and place them in an array.
+    // This is admittedly a scorched-earth method, but I am tired of YouTube constantly changing element IDs and breaking this.
+    //
     var metactionbars = document.getElementsByClassName('page-header-view-model-wiz__page-header-headline-info');
+    //        ^^^^^ UPDATE THIS WHEN YOUTUBE BREAKS SIDEBAR ELEMENT IDs ^^^^^
+    //
+    /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-    // Select the first instance (the top of the Description Box)
 
-    if (metactionbars) {
+    // Check if the metaactionbars array isn't empty.
+    if (metactionbars !== undefined || metactionbars.length != 0) {
 
-        for (var i = 4; i < metactionbars.length; i++) {
+        // Loop through every possible button placement location in sidebar
+        for (var i = metactionbars.length - 1; i >= 0; i--) {
 
-            console.log("[Filmot] [DEBUG] Sucessfully located playlist sidebar.");
+            // Discard potential placement locations that are invisible (see large comment block above)
+            if (!metactionbars[i].checkVisibility()) {
+                console.log("[Filmot] [DEBUG] [" + i + "/" + metactionbars.length + "] Skipping commented code region.");
+                continue;
+            }
+
+            console.log("[Filmot] [DEBUG] [" + i + "/" + metactionbars.length + "] Attempting to attach restore button.");
 
             // Create the container div
             var containerDiv = document.createElement('div');
@@ -134,6 +147,10 @@ function createRestoreButton() {
 
             // Insert the container at the beginning of metactionbar
             metactionbars[i].insertBefore(containerDiv, metactionbars[i].firstChild);
+
+            // Break out of loop, as we have now added a restore button in a presumably visible location.
+            break;
+
         }
 
     }
