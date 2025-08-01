@@ -79,8 +79,9 @@ function cleanUP() {
 }
 
 function checkIfPrivatedOrRemoved() {
-    var status=window.ytInitialPlayerResponse.playabilityStatus.status;
-    if (status=="ERROR" || status=="LOGIN_REQUIRED") {
+    const playabilityStatus=window.ytInitialPlayerResponse.playabilityStatus;
+    const status=playabilityStatus.status;
+    if (status=="ERROR" || (status=="LOGIN_REQUIRED" && !playabilityStatus.valueOf().desktopLegacyAgeGateReason)) {
         var id=window.ytInitialData.currentVideoEndpoint.watchEndpoint.videoId;
         if (id.length>=11) {
             window.deletedIDs=id;
