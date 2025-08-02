@@ -3,7 +3,9 @@ Tampermonkey user script that restores titles for removed or private videos in Y
 
 
 Changelog:
-
+    2 August 2025
+    Merged Vankata453 fix - Do not show Filmot video metadata when requiring login for age-gated videos
+    
     6 June 2025
     Merged Samg381 fixes for restore button placement on regular playlists and watch later playlists
     
