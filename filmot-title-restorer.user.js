@@ -270,7 +270,11 @@ function processJSONResultSingleVideo(fetched_details, format) {
             parentItem = $("div#player");
             item = parentItem.find("#subreason.yt-player-error-message-renderer").first();
 
-            parentItem.css("position", "unset");
+            // Make player error take up the whole screen, only if there is no playlist panel visible on the page
+            const playlistPanel = $("ytd-playlist-panel-renderer");
+            if (!playlistPanel.length || playlistPanel.attr("hidden") !== undefined) {
+                parentItem.css("position", "unset");
+            }
         }
 
         if (darkMode == -1) {
