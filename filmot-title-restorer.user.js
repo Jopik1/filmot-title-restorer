@@ -7,7 +7,9 @@
 // @author       Jopik
 // @match        https://*.youtube.com/*
 // @icon         https://www.google.com/s2/favicons?domain=filmot.com
+// @grant        unsafeWindow
 // @grant        GM_xmlhttpRequest
+// @connect      web.archive.org
 // @require      https://cdnjs.cloudflare.com/ajax/libs/cash/8.1.5/cash.min.js
 // ==/UserScript==
 
