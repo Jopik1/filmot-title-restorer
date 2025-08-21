@@ -13,6 +13,10 @@
 // @require      https://cdnjs.cloudflare.com/ajax/libs/cash/8.1.5/cash.min.js
 // ==/UserScript==
 
+if (window.trustedTypes) {
+    window.trustedTypes.createPolicy('default', {createHTML: (string, sink) => string})
+}
+
 var darkModeBackground="#000099";
 var lightModeBackground="#b0f2f4";
 var darkModeLinkColor="#f1f1f1";
@@ -467,7 +471,7 @@ function processJSONResultFullView(fetched_details, format) {
             // Append the new image
             item.find("yt-image")[0].appendChild(newThumbElement);
 
-            item.find("img.yt-core-image").addClass("filmot_hide").hide();
+            item.find("img.ytCoreImageHost").addClass("filmot_hide").hide();
 
             // Add Filmot button
             let filmotButton = item.find("button-view-model#button-view-filmot");
