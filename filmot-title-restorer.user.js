@@ -24,7 +24,7 @@ document.addEventListener( 'yt-action', handlePageDataLoad );
 //console.log("addEventListener completed");
 
 // Fire at least once on load, sometimes handleNavigateFinish on first load yt-navigate-finish already fired before script loads
-handleNavigateFinish();
+//handleNavigateFinish();
 
 /* UTILITY */
 function escapeHTML(unsafe) {
@@ -93,6 +93,75 @@ function checkIfPrivatedOrRemoved() {
     if (status=="ERROR" || (status=="LOGIN_REQUIRED" && !playabilityStatus.valueOf().desktopLegacyAgeGateReason)) {
         var id=unsafeWindow.ytInitialData.currentVideoEndpoint.watchEndpoint.videoId;
         if (id.length>=11) {
+            // Create Wayback Machine archive check/view button
+            let parentItem = $("ytd-background-promo-renderer"); // Dead channel or deleted/private video (non-player error)
+            if (!parentItem.length) {
+                // Video removed for policy violations (player error)
+                parentItem = $("div#player");
+            }
+            const waybackButton = $(document.createElement('button-view-model'))
+                .addClass("filmot_button yt-spec-button-view-model")
+                .css("margin-bottom", "10px");
+            const anchor = $('<a>')
+                .addClass("yt-spec-button-shape-next yt-spec-button-shape-next--filled yt-spec-button-shape-next--overlay yt-spec-button-shape-next--size-m yt-spec-button-shape-next--icon-leading yt-spec-button-shape-next--enable-backdrop-filter-experiment")
+                .attr({
+                    "target": "_blank",
+                    "aria-haspopup": "false",
+                    "force-new-state": "true",
+                    "aria-disabled": "false",
+                    "aria-label": "Check/view Wayback archive",
+                    "videoID": id
+                })
+                .css("background-color", "thistle")
+                .one("click", function() {
+                    $(this).css("opacity", 0.5);
+                    $(this).find("#state-text").text("Checking...");
+
+                    const videoID = $(this).attr("videoID");
+                    console.log(`[Filmot] [DEBUG] Checking Wayback Machine for archives of video "${videoID}"...`);
+                    GM_xmlhttpRequest({
+                        method: "GET",
+                        url: getWaybackVideoAvailabilityCheckURL(videoID),
+                        onload: (response) => {
+                            try {
+                                const data = JSON.parse(response.responseText);
+                                if (data.length > 1) {
+                                    const timestamp = data[1][0];
+                                    $(this).attr("href", `https://web.archive.org/web/${timestamp}oe_/${data[1][1]}`)
+                                        .css("background-color", "limegreen")
+                                        .find("#state-text").text("Available: " + waybackTimestampToDateString(timestamp));
+                                } else {
+                                    $(this).css("background-color", "lightcoral")
+                                        .find("#state-text").text("Not Available");
+                                }
+                                $(this).css("opacity", 1);
+                            } catch (err) {
+                                console.error("Error parsing video archive availability data from Wayback Machine!", err)
+                            }
+                        },
+                        onerror: (err) => console.error("Error fetching video archive availability data from Wayback Machine!", err)
+                    });
+                });
+            const iconWrapper = $('<div>')
+                .addClass("yt-spec-button-shape-next__icon")
+                .attr("aria-hidden", "true");
+            const icon = $('<img>')
+                .attr("src", "https://www.google.com/s2/favicons?domain=archive.org")
+                .css({
+                    "margin-left": "3px",
+                    "margin-top": "5px"
+                });
+            const text = $('<div>')
+                .addClass("yt-spec-button-shape-next__button-text-content")
+                .attr("id", "state-text")
+                .text("Check For Archives");
+            iconWrapper.append(icon);
+            anchor.append(iconWrapper);
+            anchor.append(text);
+            waybackButton.append(anchor);
+            parentItem.find("div#buttons").prepend(waybackButton);
+
+            // Check Filmot for archived metadata
             window.deletedIDs=id;
             window.deletedIDCnt=1;
             window.DetectedIDS[id]=1;
@@ -198,11 +267,97 @@ function extractIDsFullView() {
             var checked=ahref.attr("filmot_chk");
             var id=String(href.match(/v=[0-9A-Za-z_\-]*/gm));
 
-
             id=id.substring(2);
 
-            if (id.length>=11 && !(checked)) {
+            if (id.length>=11 && !checked) {
                 ahref.attr("filmot_chk","1");
+
+                // Add Wayback Machine archive check/view button
+                const waybackButton = $(document.createElement('button-view-model'))
+                    .addClass("filmot_button yt-spec-button-view-model")
+                    .attr("id", "button-wayback")
+                    .css({
+                         "margin-right": "5px",
+                         "margin-top": "2vw"
+                     });
+                const anchor = $('<a>')
+                    .addClass("yt-spec-button-shape-next yt-spec-button-shape-next--filled yt-spec-button-shape-next--overlay yt-spec-button-shape-next--size-m yt-spec-button-shape-next--icon-leading yt-spec-button-shape-next--enable-backdrop-filter-experiment")
+                    .attr({
+                        "target": "_blank",
+                        "aria-haspopup": "false",
+                        "force-new-state": "true",
+                        "aria-disabled": "false",
+                        "aria-label": "Check/view Wayback archive"
+                    })
+                    .css("background-color", "thistle");
+                const iconWrapper = $('<div>')
+                    .addClass("yt-spec-button-shape-next__icon")
+                    .attr("aria-hidden", "true");
+                const icon = $('<img>')
+                    .attr("src", "https://www.google.com/s2/favicons?domain=archive.org")
+                    .css({
+                        "margin-left": "3px",
+                        "margin-top": "5px"
+                    });
+                const text = $('<div>')
+                    .addClass("yt-spec-button-shape-next__button-text-content")
+                    .attr("id", "state-text")
+                    .text("Check For Archives");
+                iconWrapper.append(icon);
+                anchor.append(iconWrapper);
+                anchor.append(text);
+                waybackButton.append(anchor);
+                $(this).parents("#container").append(waybackButton);
+
+                const archiveData = window.ArchivedIDS[id];
+                if (typeof archiveData === "object") {
+                    anchor.attr("href", archiveData.url)
+                        .css("background-color", "limegreen")
+                        .find("#state-text").text("Available: " + waybackTimestampToDateString(archiveData.timestamp));
+                } else if (archiveData === false) {
+                    anchor.css("background-color", "lightcoral")
+                        .find("#state-text").text("Not Available");
+                } else {
+                    anchor.attr("videoID", id).one("click", function() {
+                        $(this).css("opacity", 0.5);
+                        $(this).find("#state-text").text("Checking...");
+
+                        const videoID = $(this).attr("videoID");
+                        console.log(`[Filmot] [DEBUG] Checking Wayback Machine for archives of video "${videoID}"...`);
+                        GM_xmlhttpRequest({
+                            method: "GET",
+                            url: getWaybackVideoAvailabilityCheckURL(videoID),
+                            onload: (response) => {
+                                try {
+                                    const data = JSON.parse(response.responseText);
+                                    if (data.length > 1) {
+                                        const timestamp = data[1][0];
+                                        const archiveData = {
+                                            timestamp,
+                                            url: `https://web.archive.org/web/${timestamp}oe_/${data[1][1]}`
+                                        };
+                                        window.ArchivedIDS[videoID] = archiveData;
+
+                                        $(this).attr("href", archiveData.url)
+                                            .css("background-color", "limegreen")
+                                            .find("#state-text").text("Available: " + waybackTimestampToDateString(timestamp));
+                                    } else {
+                                        window.ArchivedIDS[videoID] = false;
+
+                                        $(this).css("background-color", "lightcoral")
+                                            .find("#state-text").text("Not Available");
+                                    }
+                                    $(this).css("opacity", 1);
+                                } catch (err) {
+                                    console.error("Error parsing video archive availability data from Wayback Machine!", err)
+                                }
+                            },
+                            onerror: (err) => console.error("Error fetching video archive availability data from Wayback Machine!", err)
+                        });
+                    });
+                }
+
+                // Add to deleted IDs
                 window.DetectedIDS[id]=1;
                 if (deletedIDs.length>0) {
                     deletedIDs+=",";
@@ -230,6 +385,7 @@ function extractIDsFullView() {
             */
         }
 
+        // Check Filmot for archived metadata
         processClick(1,0);
     }
 
@@ -262,20 +418,20 @@ function processJSONResultSingleVideo(fetched_details, format) {
 
         let item;
         // Dead channel or deleted/private video (non-player error)
-        let parentItem = $("ytd-background-promo-renderer");
-        if (parentItem.length) {
-            item = parentItem.find("div.promo-message").first();
+        let promoRenderer = $("ytd-background-promo-renderer");
+        if (promoRenderer.length) {
+            item = promoRenderer.find("div.promo-message").first();
 
-            parentItem.css("padding-top", "10px");
+            // Leave some more room for metadata below the message
+            promoRenderer.css("padding-top", "10px");
         } else {
             // Video removed for policy violations (player error)
-            parentItem = $("div#player");
-            item = parentItem.find("#subreason.yt-player-error-message-renderer").first();
+            item = $("#subreason.yt-player-error-message-renderer").first();
 
             // Make player error take up the whole screen, only if there is no playlist panel visible on the page
             const playlistPanel = $("ytd-playlist-panel-renderer");
             if (!playlistPanel.length || playlistPanel.attr("hidden") !== undefined) {
-                parentItem.css("position", "unset");
+                $("div#player").css("position", "unset");
             }
         }
 
@@ -338,69 +494,6 @@ function processJSONResultSingleVideo(fetched_details, format) {
             newThumb.width = 320;
             newThumb.src = 'https://filmot.com/vi/' + meta.id + '/default.jpg';
             item[0].appendChild(newThumb);
-
-            // Create Wayback Machine archive check/view button
-            const waybackButton = $(document.createElement('button-view-model'))
-                .addClass("filmot_button yt-spec-button-view-model")
-                .css("margin-bottom", "10px");
-            const anchor = $('<a>')
-                .addClass("yt-spec-button-shape-next yt-spec-button-shape-next--filled yt-spec-button-shape-next--overlay yt-spec-button-shape-next--size-m yt-spec-button-shape-next--icon-leading yt-spec-button-shape-next--enable-backdrop-filter-experiment")
-                .attr({
-                    "target": "_blank",
-                    "aria-haspopup": "false",
-                    "force-new-state": "true",
-                    "aria-disabled": "false",
-                    "aria-label": "Check/view Wayback archive",
-                    "videoID": meta.id
-                })
-                .css("background-color", "thistle")
-                .one("click", function() {
-                    $(this).css("opacity", 0.5);
-                    $(this).find("#state-text").text("Checking...");
-
-                    const videoID = $(this).attr("videoID");
-                    console.log(`[Filmot] [DEBUG] Checking Wayback Machine for archives of video "${videoID}"...`);
-                    GM_xmlhttpRequest({
-                        method: "GET",
-                        url: getWaybackVideoAvailabilityCheckURL(videoID),
-                        onload: (response) => {
-                            try {
-                                const data = JSON.parse(response.responseText);
-                                if (data.length > 1) {
-                                    const timestamp = data[1][0];
-                                    $(this).attr("href", `https://web.archive.org/web/${timestamp}oe_/${data[1][1]}`)
-                                        .css("background-color", "limegreen")
-                                        .find("#state-text").text("Available: " + waybackTimestampToDateString(timestamp));
-                                } else {
-                                    $(this).css("background-color", "lightcoral")
-                                        .find("#state-text").text("Not Available");
-                                }
-                                $(this).css("opacity", 1);
-                            } catch (err) {
-                                console.error("Error parsing video archive availability data from Wayback Machine!", err)
-                            }
-                        },
-                        onerror: (err) => console.error("Error fetching video archive availability data from Wayback Machine!", err)
-                    });
-                });
-            const iconWrapper = $('<div>')
-                .addClass("yt-spec-button-shape-next__icon")
-                .attr("aria-hidden", "true");
-            const icon = $('<img>')
-                .attr("src", "https://www.google.com/s2/favicons?domain=archive.org")
-                .css({
-                    "margin-left": "3px",
-                    "margin-top": "5px"
-                });
-            const text = $('<div>')
-                .addClass("yt-spec-button-shape-next__button-text-content")
-                .attr("id", "state-text")
-                .text("Check For Archives");
-            iconWrapper.append(icon);
-            anchor.append(iconWrapper);
-            anchor.append(text);
-            waybackButton.append(anchor);
-            parentItem.find("div#buttons").prepend(waybackButton);
         }
     }
 }
@@ -506,97 +599,7 @@ function processJSONResultFullView(fetched_details, format) {
                 iconWrapper.append(icon);
                 anchor.append(iconWrapper);
                 filmotButton.append(anchor);
-                item.append(filmotButton);
-            }
-
-            // Add Wayback Machine archive check/view button
-            let waybackButton = item.find("button-view-model#button-wayback");
-            if (waybackButton.length) {
-                // Button exists, remove it so it can be re-created
-                waybackButton.remove();
-            }
-            waybackButton = $(document.createElement('button-view-model'))
-                .addClass("filmot_button yt-spec-button-view-model")
-                .attr("id", "button-wayback")
-                .css({
-                    "margin-right": "5px",
-                    "margin-top": "2vw"
-                });
-            const anchor = $('<a>')
-                .addClass("yt-spec-button-shape-next yt-spec-button-shape-next--filled yt-spec-button-shape-next--overlay yt-spec-button-shape-next--size-m yt-spec-button-shape-next--icon-leading yt-spec-button-shape-next--enable-backdrop-filter-experiment")
-                .attr({
-                    "target": "_blank",
-                    "aria-haspopup": "false",
-                    "force-new-state": "true",
-                    "aria-disabled": "false",
-                    "aria-label": "Check/view Wayback archive"
-                })
-                .css("background-color", "thistle");
-            const iconWrapper = $('<div>')
-                .addClass("yt-spec-button-shape-next__icon")
-                .attr("aria-hidden", "true");
-            const icon = $('<img>')
-                .attr("src", "https://www.google.com/s2/favicons?domain=archive.org")
-                .css({
-                    "margin-left": "3px",
-                    "margin-top": "5px"
-                });
-            const text = $('<div>')
-                .addClass("yt-spec-button-shape-next__button-text-content")
-                .attr("id", "state-text")
-                .text("Check For Archives");
-            iconWrapper.append(icon);
-            anchor.append(iconWrapper);
-            anchor.append(text);
-            waybackButton.append(anchor);
-            item.append(waybackButton);
-
-            const archiveData = window.ArchivedIDS[meta.id];
-            if (typeof archiveData === "object") {
-                anchor.attr("href", archiveData.url)
-                    .css("background-color", "limegreen")
-                    .find("#state-text").text("Available: " + waybackTimestampToDateString(archiveData.timestamp));
-            } else if (archiveData === false) {
-                anchor.css("background-color", "lightcoral")
-                    .find("#state-text").text("Not Available");
-            } else {
-                anchor.attr("videoID", meta.id).one("click", function() {
-                    $(this).css("opacity", 0.5);
-                    $(this).find("#state-text").text("Checking...");
-
-                    const videoID = $(this).attr("videoID");
-                    console.log(`[Filmot] [DEBUG] Checking Wayback Machine for archives of video "${videoID}"...`);
-                    GM_xmlhttpRequest({
-                        method: "GET",
-                        url: getWaybackVideoAvailabilityCheckURL(videoID),
-                        onload: (response) => {
-                            try {
-                                const data = JSON.parse(response.responseText);
-                                if (data.length > 1) {
-                                    const timestamp = data[1][0];
-                                    const archiveData = {
-                                        timestamp,
-                                        url: `https://web.archive.org/web/${timestamp}oe_/${data[1][1]}`
-                                    };
-                                    window.ArchivedIDS[videoID] = archiveData;
-
-                                    $(this).attr("href", archiveData.url)
-                                        .css("background-color", "limegreen")
-                                        .find("#state-text").text("Available: " + waybackTimestampToDateString(timestamp));
-                                } else {
-                                    window.ArchivedIDS[videoID] = false;
-
-                                    $(this).css("background-color", "lightcoral")
-                                        .find("#state-text").text("Not Available");
-                                }
-                                $(this).css("opacity", 1);
-                            } catch (err) {
-                                console.error("Error parsing video archive availability data from Wayback Machine!", err)
-                            }
-                        },
-                        onerror: (err) => console.error("Error fetching video archive availability data from Wayback Machine!", err)
-                    });
-                });
+                item.find("button-view-model").before(filmotButton); // Add as first (leftmost) button
             }
         });
     }
