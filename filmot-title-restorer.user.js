@@ -13,10 +13,6 @@
 // @require      https://cdnjs.cloudflare.com/ajax/libs/cash/8.1.5/cash.min.js
 // ==/UserScript==
 
-if (window.trustedTypes) {
-    window.trustedTypes.createPolicy('default', {createHTML: (string, sink) => string})
-}
-
 var darkModeBackground="#000099";
 var lightModeBackground="#b0f2f4";
 var darkModeLinkColor="#f1f1f1";
@@ -344,7 +340,7 @@ function processJSONResultSingleVideo(fetched_details, format) {
             item[0].appendChild(newThumb);
 
             // Create Wayback Machine archive check/view button
-            const waybackButton = $('<button-view-model>')
+            const waybackButton = $(document.createElement('button-view-model'))
                 .addClass("filmot_button yt-spec-button-view-model")
                 .css("margin-bottom", "10px");
             const anchor = $('<a>')
@@ -415,7 +411,6 @@ function processJSONResultFullView(fetched_details, format) {
     for (let i = 0; i < fetched_details.length; ++i) {
         var meta = fetched_details[i];
         window.RecoveredIDS[meta.id] = 1;
-        var escapedTitle = meta.title;
         if (meta.channelname == null) {
             meta.channelname = fetched_details[i].channelid;
         }
@@ -423,6 +418,8 @@ function processJSONResultFullView(fetched_details, format) {
         $(rendererSelector).filter(function() {
             return $(this).find("a.ytd-playlist-video-renderer[href*='" + meta.id + "']").length > 0;
         }).each(function(index, element) {
+            const escapedTitle = meta.title;
+
             var item = $(element);
             item.addClass("filmot_highlight");
             var titleItem = item.find("#video-title");
@@ -479,7 +476,7 @@ function processJSONResultFullView(fetched_details, format) {
                 // Button exists, update the URL
                 filmotButton.find("a").attr("href", "https://filmot.com/video/" + meta.id);
             } else {
-                filmotButton = $('<button-view-model>')
+                filmotButton = $(document.createElement('button-view-model'))
                     .addClass("filmot_button yt-spec-button-view-model")
                     .attr("id", "button-view-filmot")
                     .css({
@@ -518,7 +515,7 @@ function processJSONResultFullView(fetched_details, format) {
                 // Button exists, remove it so it can be re-created
                 waybackButton.remove();
             }
-            waybackButton = $('<button-view-model>')
+            waybackButton = $(document.createElement('button-view-model'))
                 .addClass("filmot_button yt-spec-button-view-model")
                 .attr("id", "button-wayback")
                 .css({
