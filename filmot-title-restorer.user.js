@@ -1,13 +1,15 @@
 // ==UserScript==
 // @name         Filmot Title Restorer
 // @namespace    http://tampermonkey.net/
-// @version      0.45
+// @version      0.46
 // @license GPL-3.0-or-later; https://www.gnu.org/licenses/gpl-3.0.txt
 // @description  Restores titles for removed or private videos in YouTube playlists
 // @author       Jopik
 // @match        https://*.youtube.com/*
 // @icon         https://www.google.com/s2/favicons?domain=filmot.com
-// @grant        none
+// @grant        unsafeWindow
+// @grant        GM_xmlhttpRequest
+// @connect      web.archive.org
 // @require      https://cdnjs.cloudflare.com/ajax/libs/cash/8.1.5/cash.min.js
 // ==/UserScript==
 
@@ -21,14 +23,21 @@ document.addEventListener('yt-navigate-finish', handleNavigateFinish);
 document.addEventListener( 'yt-action', handlePageDataLoad );
 //console.log("addEventListener completed");
 
-//fire at least once on load, sometimes handleNavigateFinish on first load yt-navigate-finish already fired before script loads
-handleNavigateFinish();
+// Fire at least once on load, sometimes handleNavigateFinish on first load yt-navigate-finish already fired before script loads
+//handleNavigateFinish();
 
+/* UTILITY */
 function escapeHTML(unsafe) {
     return unsafe.replace(
         /[\u0000-\u002F\u003A-\u0040\u005B-\u0060\u007B-\u00FF]/g,
         c => '&#' + ('000' + c.charCodeAt(0)).substr(-4, 4) + ';'
     )
+}
+function getWaybackVideoAvailabilityCheckURL(videoID) {
+    return `https://web.archive.org/cdx/search/cdx?url=wayback-fakeurl.archive.org/yt/${videoID}&fl=timestamp,original&output=json&closest=20050101000000&limit=1`;
+}
+function waybackTimestampToDateString(timestamp) {
+    return `${timestamp.slice(6, 8)}.${timestamp.slice(4, 6)}.${timestamp.slice(0, 4)}`;
 }
 
 function handlePageDataLoad(event){
@@ -40,7 +49,7 @@ function handlePageDataLoad(event){
     }
 }
 
-function handleNavigateStart(){
+function handleNavigateStart() {
     var filmotTitles=$(".filmot_title");
     filmotTitles.text("");
     filmotTitles.removeClass("filmot_title");
@@ -51,19 +60,17 @@ function handleNavigateStart(){
     cleanUP();
 }
 
-function handleNavigateFinish(){
+function handleNavigateFinish() {
     cleanUP();
+
     if (window.location.href.indexOf("/playlist?")>0)
     {
-        setTimeout(function(){ extractIDsFullView(); }, 500);
+        setTimeout(extractIDsFullView, 500);
     }
-
-    if (window.location.href.indexOf("/watch?")>0)
+    else if (window.location.href.indexOf("/watch?")>0)
     {
-        setTimeout(function(){ checkIfPrivatedOrRemoved(); }, 500);
+        setTimeout(checkIfPrivatedOrRemoved, 500);
     }
-
-
 }
 
 function cleanUP() {
@@ -74,16 +81,87 @@ function cleanUP() {
     $(".filmot_highlight").removeClass("filmot_highlight");
     $("#TitleRestoredDiv").remove();
     $(".filmot_c_link").remove();
+    $(".filmot_button").remove();
+    window.ArchivedIDS={};
     window.RecoveredIDS={};
     window.DetectedIDS={};
 }
 
 function checkIfPrivatedOrRemoved() {
-    const playabilityStatus=window.ytInitialPlayerResponse.playabilityStatus;
+    const playabilityStatus=unsafeWindow.ytInitialPlayerResponse.playabilityStatus;
     const status=playabilityStatus.status;
     if (status=="ERROR" || (status=="LOGIN_REQUIRED" && !playabilityStatus.valueOf().desktopLegacyAgeGateReason)) {
-        var id=window.ytInitialData.currentVideoEndpoint.watchEndpoint.videoId;
+        var id=unsafeWindow.ytInitialData.currentVideoEndpoint.watchEndpoint.videoId;
         if (id.length>=11) {
+            // Create Wayback Machine archive check/view button
+            let parentItem = $("ytd-background-promo-renderer"); // Dead channel or deleted/private video (non-player error)
+            if (!parentItem.length) {
+                // Video removed for policy violations (player error)
+                parentItem = $("div#player");
+            }
+            const waybackButton = $(document.createElement('button-view-model'))
+                .addClass("filmot_button yt-spec-button-view-model")
+                .css("margin-bottom", "10px");
+            const anchor = $('<a>')
+                .addClass("yt-spec-button-shape-next yt-spec-button-shape-next--filled yt-spec-button-shape-next--overlay yt-spec-button-shape-next--size-m yt-spec-button-shape-next--icon-leading yt-spec-button-shape-next--enable-backdrop-filter-experiment")
+                .attr({
+                    "target": "_blank",
+                    "aria-haspopup": "false",
+                    "force-new-state": "true",
+                    "aria-disabled": "false",
+                    "aria-label": "Check/view Wayback archive",
+                    "videoID": id
+                })
+                .css("background-color", "thistle")
+                .one("click", function() {
+                    $(this).css("opacity", 0.5);
+                    $(this).find("#state-text").text("Checking...");
+
+                    const videoID = $(this).attr("videoID");
+                    console.log(`[Filmot] [DEBUG] Checking Wayback Machine for archives of video "${videoID}"...`);
+                    GM_xmlhttpRequest({
+                        method: "GET",
+                        url: getWaybackVideoAvailabilityCheckURL(videoID),
+                        onload: (response) => {
+                            try {
+                                const data = JSON.parse(response.responseText);
+                                if (data.length > 1) {
+                                    const timestamp = data[1][0];
+                                    $(this).attr("href", `https://web.archive.org/web/${timestamp}oe_/${data[1][1]}`)
+                                        .css("background-color", "limegreen")
+                                        .find("#state-text").text("Available: " + waybackTimestampToDateString(timestamp));
+                                } else {
+                                    $(this).css("background-color", "lightcoral")
+                                        .find("#state-text").text("Not Available");
+                                }
+                                $(this).css("opacity", 1);
+                            } catch (err) {
+                                console.error("Error parsing video archive availability data from Wayback Machine!", err)
+                            }
+                        },
+                        onerror: (err) => console.error("Error fetching video archive availability data from Wayback Machine!", err)
+                    });
+                });
+            const iconWrapper = $('<div>')
+                .addClass("yt-spec-button-shape-next__icon")
+                .attr("aria-hidden", "true");
+            const icon = $('<img>')
+                .attr("src", "https://www.google.com/s2/favicons?domain=archive.org")
+                .css({
+                    "margin-left": "3px",
+                    "margin-top": "5px"
+                });
+            const text = $('<div>')
+                .addClass("yt-spec-button-shape-next__button-text-content")
+                .attr("id", "state-text")
+                .text("Check For Archives");
+            iconWrapper.append(icon);
+            anchor.append(iconWrapper);
+            anchor.append(text);
+            waybackButton.append(anchor);
+            parentItem.find("div#buttons").prepend(waybackButton);
+
+            // Check Filmot for archived metadata
             window.deletedIDs=id;
             window.deletedIDCnt=1;
             window.DetectedIDS[id]=1;
@@ -93,7 +171,6 @@ function checkIfPrivatedOrRemoved() {
 }
 
 function createRestoreButton() {
-
     // Time to create the 'Restore Titles' button in the Playlist Description Box (left side pane, beneath playlist thumbnail)
     console.log("[Filmot] [DEBUG] Creating 'Restore Titles' button in playlist description box.");
 
@@ -116,10 +193,8 @@ function createRestoreButton() {
 
     // Check if the metaactionbars array isn't empty.
     if (metactionbars !== undefined || metactionbars.length != 0) {
-
         // Loop through every possible button placement location in sidebar
         for (var i = metactionbars.length - 1; i >= 0; i--) {
-
             // Discard potential placement locations that are invisible (see large comment block above)
             if (!metactionbars[i].checkVisibility()) {
                 console.log("[Filmot] [DEBUG] [" + i + "/" + metactionbars.length + "] Skipping commented code region.");
@@ -157,20 +232,15 @@ function createRestoreButton() {
 
             // Break out of loop, as we have now added a restore button in a presumably visible location.
             break;
-
         }
-
     }
     else {
-
         console.log("[Filmot] [DEBUG] ERROR: Could not locate playlist sidebar to place restore button.");
-
     }
 
 }
 
 function extractIDsFullView() {
-
     window.deletedIDs="";
     window.deletedIDCnt=0;
     var deletedIDs="";
@@ -178,23 +248,18 @@ function extractIDsFullView() {
 
     var rendererSelector="h3.ytd-playlist-video-renderer";
     var a=$(rendererSelector).filter(function() {
-
-
         if ($(this).attr('aria-label'))
         {
             return false;
         }
-
 
         var meta=$(this).parents("#meta");
         if (meta.length==0) {
             return false;
         }
         return true;
-
     }).each(function( index, element ) {
         // element == this
-
         var ahref= $(this).children("a.yt-simple-endpoint");
 
         if (ahref.length>0) {
@@ -202,11 +267,97 @@ function extractIDsFullView() {
             var checked=ahref.attr("filmot_chk");
             var id=String(href.match(/v=[0-9A-Za-z_\-]*/gm));
 
-
             id=id.substring(2);
 
-            if (id.length>=11 && !(checked)) {
+            if (id.length>=11 && !checked) {
                 ahref.attr("filmot_chk","1");
+
+                // Add Wayback Machine archive check/view button
+                const waybackButton = $(document.createElement('button-view-model'))
+                    .addClass("filmot_button yt-spec-button-view-model")
+                    .attr("id", "button-wayback")
+                    .css({
+                         "margin-right": "5px",
+                         "margin-top": "2vw"
+                     });
+                const anchor = $('<a>')
+                    .addClass("yt-spec-button-shape-next yt-spec-button-shape-next--filled yt-spec-button-shape-next--overlay yt-spec-button-shape-next--size-m yt-spec-button-shape-next--icon-leading yt-spec-button-shape-next--enable-backdrop-filter-experiment")
+                    .attr({
+                        "target": "_blank",
+                        "aria-haspopup": "false",
+                        "force-new-state": "true",
+                        "aria-disabled": "false",
+                        "aria-label": "Check/view Wayback archive"
+                    })
+                    .css("background-color", "thistle");
+                const iconWrapper = $('<div>')
+                    .addClass("yt-spec-button-shape-next__icon")
+                    .attr("aria-hidden", "true");
+                const icon = $('<img>')
+                    .attr("src", "https://www.google.com/s2/favicons?domain=archive.org")
+                    .css({
+                        "margin-left": "3px",
+                        "margin-top": "5px"
+                    });
+                const text = $('<div>')
+                    .addClass("yt-spec-button-shape-next__button-text-content")
+                    .attr("id", "state-text")
+                    .text("Check For Archives");
+                iconWrapper.append(icon);
+                anchor.append(iconWrapper);
+                anchor.append(text);
+                waybackButton.append(anchor);
+                $(this).parents("#container").append(waybackButton);
+
+                const archiveData = window.ArchivedIDS[id];
+                if (typeof archiveData === "object") {
+                    anchor.attr("href", archiveData.url)
+                        .css("background-color", "limegreen")
+                        .find("#state-text").text("Available: " + waybackTimestampToDateString(archiveData.timestamp));
+                } else if (archiveData === false) {
+                    anchor.css("background-color", "lightcoral")
+                        .find("#state-text").text("Not Available");
+                } else {
+                    anchor.attr("videoID", id).one("click", function() {
+                        $(this).css("opacity", 0.5);
+                        $(this).find("#state-text").text("Checking...");
+
+                        const videoID = $(this).attr("videoID");
+                        console.log(`[Filmot] [DEBUG] Checking Wayback Machine for archives of video "${videoID}"...`);
+                        GM_xmlhttpRequest({
+                            method: "GET",
+                            url: getWaybackVideoAvailabilityCheckURL(videoID),
+                            onload: (response) => {
+                                try {
+                                    const data = JSON.parse(response.responseText);
+                                    if (data.length > 1) {
+                                        const timestamp = data[1][0];
+                                        const archiveData = {
+                                            timestamp,
+                                            url: `https://web.archive.org/web/${timestamp}oe_/${data[1][1]}`
+                                        };
+                                        window.ArchivedIDS[videoID] = archiveData;
+
+                                        $(this).attr("href", archiveData.url)
+                                            .css("background-color", "limegreen")
+                                            .find("#state-text").text("Available: " + waybackTimestampToDateString(timestamp));
+                                    } else {
+                                        window.ArchivedIDS[videoID] = false;
+
+                                        $(this).css("background-color", "lightcoral")
+                                            .find("#state-text").text("Not Available");
+                                    }
+                                    $(this).css("opacity", 1);
+                                } catch (err) {
+                                    console.error("Error parsing video archive availability data from Wayback Machine!", err)
+                                }
+                            },
+                            onerror: (err) => console.error("Error fetching video archive availability data from Wayback Machine!", err)
+                        });
+                    });
+                }
+
+                // Add to deleted IDs
                 window.DetectedIDS[id]=1;
                 if (deletedIDs.length>0) {
                     deletedIDs+=",";
@@ -218,31 +369,24 @@ function extractIDsFullView() {
     });
 
     if (deletedIDs.length>0) {
-
         window.deletedIDs=deletedIDs;
-
         window.deletedIDCnt=deletedIDsCnt;
 
         // If there are titles to be restored...
-
         if (document.getElementById ("TitleRestoredBtn")==null)
         {
-
             console.log("[Filmot] [DEBUG] There are " + deletedIDsCnt + " titles to restore.");
 
             // Add the 'restore titles' button in the playlist info/description pane
             createRestoreButton();
 
             /*
-
             document.getElementById ("TitleRestoredBtn").addEventListener ("click", ButtonClickActionFullView, false);
-
             */
         }
 
+        // Check Filmot for archived metadata
         processClick(1,0);
-
-
     }
 
 }
@@ -257,7 +401,6 @@ function rgb2lum(rgb)
     // calculate relative luminance of a color provided by rgb() string
     // black is 0, white is 1
     rgb = rgb.match(/^rgb\((\d+),\s*(\d+),\s*(\d+)\)$/);
-
     if (rgb.length==4) {
         var R=parseInt(rgb[1],10)/255.0;
         var G=parseInt(rgb[2],10)/255.0;
@@ -273,12 +416,23 @@ function processJSONResultSingleVideo(fetched_details, format) {
         var meta = fetched_details[i];
         var escapedTitle = meta.title;
 
-        // dead channel
-        item = $("div.promo-message").first();
-        if (item.length === 0) {
-            //location for deleted/privated videos where channel is still alive
-            var item = $("#subreason.yt-player-error-message-renderer").first();
+        let item;
+        // Dead channel or deleted/private video (non-player error)
+        let promoRenderer = $("ytd-background-promo-renderer");
+        if (promoRenderer.length) {
+            item = promoRenderer.find("div.promo-message").first();
 
+            // Leave some more room for metadata below the message
+            promoRenderer.css("padding-top", "10px");
+        } else {
+            // Video removed for policy violations (player error)
+            item = $("#subreason.yt-player-error-message-renderer").first();
+
+            // Make player error take up the whole screen, only if there is no playlist panel visible on the page
+            const playlistPanel = $("ytd-playlist-panel-renderer");
+            if (!playlistPanel.length || playlistPanel.attr("hidden") !== undefined) {
+                $("div#player").css("position", "unset");
+            }
         }
 
         if (darkMode == -1) {
@@ -347,11 +501,9 @@ function processJSONResultSingleVideo(fetched_details, format) {
 function processJSONResultFullView(fetched_details, format) {
     var darkMode = -1;
 
-
     for (let i = 0; i < fetched_details.length; ++i) {
         var meta = fetched_details[i];
         window.RecoveredIDS[meta.id] = 1;
-        var escapedTitle = meta.title;
         if (meta.channelname == null) {
             meta.channelname = fetched_details[i].channelid;
         }
@@ -359,7 +511,7 @@ function processJSONResultFullView(fetched_details, format) {
         $(rendererSelector).filter(function() {
             return $(this).find("a.ytd-playlist-video-renderer[href*='" + meta.id + "']").length > 0;
         }).each(function(index, element) {
-
+            const escapedTitle = meta.title;
 
             var item = $(element);
             item.addClass("filmot_highlight");
@@ -384,9 +536,8 @@ function processJSONResultFullView(fetched_details, format) {
             channelLinkElement.href = 'https://www.youtube.com/channel/' + meta.channelid;
             channelLinkElement.textContent = meta.channelname;
             if (darkMode==1) {
-                channelLinkElement.style.color=darkModeLinkColor;
+                channelLinkElement.style.color = darkModeLinkColor;
             }
-
 
             // Append the new element
             channelItem[0].appendChild(channelLinkElement);
@@ -398,7 +549,7 @@ function processJSONResultFullView(fetched_details, format) {
             var newThumbElement = document.createElement('img');
             newThumbElement.id = 'filmot_newimg';
             newThumbElement.className = 'style-scope yt-img-shadow filmot_newimg';
-            newThumbElement.width = 100;
+            newThumbElement.style.width = '100%';
             newThumbElement.src = 'https://filmot.com/vi/' + meta.id + '/default.jpg';
             newThumbElement.title = escapedTitle;
             newThumbElement.onclick = function(event) {
@@ -410,14 +561,52 @@ function processJSONResultFullView(fetched_details, format) {
             // Append the new image
             item.find("yt-image")[0].appendChild(newThumbElement);
 
-            item.find("img.yt-core-image").addClass("filmot_hide").hide();
+            item.find("img.ytCoreImageHost").addClass("filmot_hide").hide();
+
+            // Add Filmot button
+            let filmotButton = item.find("button-view-model#button-view-filmot");
+            if (filmotButton.length) {
+                // Button exists, update the URL
+                filmotButton.find("a").attr("href", "https://filmot.com/video/" + meta.id);
+            } else {
+                filmotButton = $(document.createElement('button-view-model'))
+                    .addClass("filmot_button yt-spec-button-view-model")
+                    .attr("id", "button-view-filmot")
+                    .css({
+                        "margin-right": "5px",
+                        "margin-top": "2vw"
+                });
+                const anchor = $('<a>')
+                    .addClass("yt-spec-button-shape-next yt-spec-button-shape-next--filled yt-spec-button-shape-next--overlay yt-spec-button-shape-next--size-m yt-spec-button-shape-next--icon-leading yt-spec-button-shape-next--enable-backdrop-filter-experiment")
+                    .attr({
+                        "target": "_blank",
+                        "aria-haspopup": "false",
+                        "force-new-state": "true",
+                        "aria-disabled": "false",
+                        "href": "https://filmot.com/video/" + meta.id,
+                        "aria-label": "View on Filmot"
+                    })
+                    .css("padding-right", "0");
+                const iconWrapper = $('<div>')
+                    .addClass("yt-spec-button-shape-next__icon")
+                    .attr("aria-hidden", "true");
+                const icon = $('<img>')
+                    .attr("src", "https://www.google.com/s2/favicons?domain=filmot.com")
+                    .css({
+                        "margin-left": "3px",
+                        "margin-top": "5px"
+                    });
+                iconWrapper.append(icon);
+                anchor.append(iconWrapper);
+                filmotButton.append(anchor);
+                item.find("button-view-model").before(filmotButton); // Add as first (leftmost) button
+            }
         });
     }
     $("#TitleRestoredBtn").text(Object.keys(window.RecoveredIDS).length + " of " + Object.keys(window.DetectedIDS).length + " restored");
 }
 
 function processClick(format, nTry) {
-
     var maxTries = 2;
     var apiURL = 'https://filmot.com/api/getvideos?key=md5paNgdbaeudounjp39&id=' + window.deletedIDs;
 
@@ -451,8 +640,8 @@ function processClick(format, nTry) {
     });
 
 }
+
 function ButtonClickActionFullView (zEvent) {
     processClick(2,0);
     return false;
 }
-
