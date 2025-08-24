@@ -4,6 +4,9 @@ Tampermonkey user script that restores titles for removed or private videos in Y
 
 Changelog:
 
+    24 August 2025
+    Merged Vankata453 enhancement - Adds buttons to view video metadata on Filmot (in playlist view) and check/view earliest Wayback archive (in playlist and single video view)
+    
     2 August 2025
     Merged Vankata453 fix - Do not show Filmot video metadata when requiring login for age-gated videos
     
