@@ -4,6 +4,11 @@ Tampermonkey user script that restores titles for removed or private videos in Y
 
 Changelog:
 
+    21 September 2025
+    Merged dnicolson  PR - prevent the script from running in youtube.com iframes (i.e. embeded videos)
+    Fixed restore button placement for YT layout changes in regular playlists
+    Removed the unnecessary unsafeWindow grant 
+    
     24 August 2025
     Merged Vankata453 enhancement - Adds buttons to view video metadata on Filmot (in playlist view) and check/view earliest Wayback archive (in playlist and single video view)
     
