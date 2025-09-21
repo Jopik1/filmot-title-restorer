@@ -6,6 +6,7 @@
 // @description  Restores titles for removed or private videos in YouTube playlists
 // @author       Jopik
 // @match        https://*.youtube.com/*
+// @noframes
 // @icon         https://www.google.com/s2/favicons?domain=filmot.com
 // @grant        unsafeWindow
 // @grant        GM_xmlhttpRequest
