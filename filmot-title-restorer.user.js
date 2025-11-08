@@ -88,7 +88,7 @@ function cleanUP() {
 }
 
 function checkIfPrivatedOrRemoved() {
-    const playabilityStatus=unsafeWindow.ytInitialPlayerResponse.playabilityStatus;
+    const playabilityStatus=unsafeWindow.ytInitialPlayerResponse?.playabilityStatus;
     const status=playabilityStatus.status;
     if (status=="ERROR" || (status=="LOGIN_REQUIRED" && !playabilityStatus.valueOf().desktopLegacyAgeGateReason)) {
         var id=unsafeWindow.ytInitialData.currentVideoEndpoint.watchEndpoint.videoId;
