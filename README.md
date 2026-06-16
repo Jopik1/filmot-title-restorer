@@ -4,6 +4,9 @@ Tampermonkey user script that restores titles for removed or private videos in Y
 
 Changelog:
 
+    16 July 2026
+    Fixed to work with YT layout changes which modified css class names and dom structure.
+    
     21 September 2025
     Merged dnicolson  PR - prevent the script from running in youtube.com iframes (i.e. embeded videos)
     Fixed restore button placement for YT layout changes in regular playlists
