@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Filmot Title Restorer
 // @namespace    http://tampermonkey.net/
-// @version      0.48
+// @version      0.49
 // @license GPL-3.0-or-later; https://www.gnu.org/licenses/gpl-3.0.txt
 // @description  Restores titles for removed or private videos in YouTube playlists
 // @author       Jopik
@@ -11,6 +11,8 @@
 // @grant        GM_xmlhttpRequest
 // @connect      web.archive.org
 // @require      https://cdnjs.cloudflare.com/ajax/libs/cash/8.1.5/cash.min.js
+// @downloadURL https://update.greasyfork.org/scripts/430202/Filmot%20Title%20Restorer.user.js
+// @updateURL https://update.greasyfork.org/scripts/430202/Filmot%20Title%20Restorer.meta.js
 // ==/UserScript==
 
 var darkModeBackground="#000099";
@@ -361,13 +363,14 @@ function extractIDsFullView() {
     var deletedIDs = "";
     var deletedIDsCnt = 0;
 
-    var rendererSelector = "h3.ytLockupMetadataViewModelHeadingReset";
+    var rendererSelector = "h3.ytLockupMetadataViewModelHeadingReset, h3.ytd-playlist-video-renderer";
     $(rendererSelector).filter(function() {
         if ($(this).attr('aria-label')) {
             return false;
         }
         return true;
     }).each(function(index, element) {
+
         // element == this == h3.ytLockupMetadataViewModelHeadingReset
 
         var titleContainer = $(this);
@@ -375,6 +378,10 @@ function extractIDsFullView() {
             .closest("yt-lockup-view-model")
             .find('a[href*="/watch?v="]')
             .first();
+
+        if (ahref.length == 0) {
+            ahref = titleContainer.find('a#video-title[href*="/watch?v="]').first();
+        }
 
         if (ahref.length > 0) {
             var checked = ahref.attr("filmot_chk");
@@ -668,6 +675,114 @@ function processJSONResultSingleVideo(fetched_details, format) {
     }
 }
 
+function processJSONResultFullViewOldFormat(fetched_details, format) {
+    var darkMode = -1;
+
+    for (let i = 0; i < fetched_details.length; ++i) {
+        var meta = fetched_details[i];
+        window.RecoveredIDS[meta.id] = 1;
+        if (meta.channelname == null) {
+            meta.channelname = fetched_details[i].channelid;
+        }
+        var rendererSelector = "#container.ytd-playlist-video-renderer";
+        $(rendererSelector).filter(function() {
+            return $(this).find("a.ytd-playlist-video-renderer[href*='" + meta.id + "']").length > 0;
+        }).each(function(index, element) {
+            const escapedTitle = meta.title;
+
+            var item = $(element);
+            item.addClass("filmot_highlight");
+            var titleItem = item.find("#video-title");
+            titleItem.text(meta.title);
+            titleItem.attr("title", meta.title);
+            titleItem.attr("aria-label", meta.title);
+            titleItem.addClass("filmot_title");
+            if (darkMode == -1) {
+                var lum = rgb2lum(titleItem.css("color"));
+                darkMode = (lum > 0.51) ? 1 : 0; //if text is bright it means we are in dark mode
+            }
+            item.css("background-color", (darkMode == 0) ? lightModeBackground : darkModeBackground);
+
+            var channelItem = titleItem.parent();
+            channelItem.find("a.filmot_c_link").remove();
+
+            // Create a new anchor element
+            var channelLinkElement = document.createElement('a');
+            channelLinkElement.className = 'filmot_c_link yt-simple-endpoint style-scope yt-formatted-string';
+            channelLinkElement.dir = 'auto';
+            channelLinkElement.href = 'https://www.youtube.com/channel/' + meta.channelid;
+            channelLinkElement.textContent = meta.channelname;
+            if (darkMode==1) {
+                channelLinkElement.style.color = darkModeLinkColor;
+            }
+
+            // Append the new element
+            channelItem[0].appendChild(channelLinkElement);
+
+            item.find("#byline-container").attr("hidden", false);
+            item.find(".filmot_newimg").remove();
+
+            // Create a new image element
+            var newThumbElement = document.createElement('img');
+            newThumbElement.id = 'filmot_newimg';
+            newThumbElement.className = 'style-scope yt-img-shadow filmot_newimg';
+            newThumbElement.style.width = '100%';
+            newThumbElement.src = 'https://filmot.com/vi/' + meta.id + '/default.jpg';
+            newThumbElement.title = escapedTitle;
+            newThumbElement.onclick = function(event) {
+                prompt('Full Title', escapedTitle);
+                event.stopPropagation();
+                return false;
+            };
+
+            // Append the new image
+            item.find("yt-image")[0].appendChild(newThumbElement);
+
+            item.find("img.ytCoreImageHost").addClass("filmot_hide").hide();
+
+            // Add Filmot button
+            let filmotButton = item.find("button-view-model#button-view-filmot");
+            if (filmotButton.length) {
+                // Button exists, update the URL
+                filmotButton.find("a").attr("href", "https://filmot.com/video/" + meta.id);
+            } else {
+                filmotButton = $(document.createElement('button-view-model'))
+                    .addClass("filmot_button yt-spec-button-view-model")
+                    .attr("id", "button-view-filmot")
+                    .css({
+                        "margin-right": "5px",
+                        "margin-top": "2vw"
+                });
+                const anchor = $('<a>')
+                    .addClass("yt-spec-button-shape-next yt-spec-button-shape-next--filled yt-spec-button-shape-next--overlay yt-spec-button-shape-next--size-m yt-spec-button-shape-next--icon-leading yt-spec-button-shape-next--enable-backdrop-filter-experiment")
+                    .attr({
+                        "target": "_blank",
+                        "aria-haspopup": "false",
+                        "force-new-state": "true",
+                        "aria-disabled": "false",
+                        "href": "https://filmot.com/video/" + meta.id,
+                        "aria-label": "View on Filmot"
+                    })
+                    .css("padding-right", "0");
+                const iconWrapper = $('<div>')
+                    .addClass("yt-spec-button-shape-next__icon")
+                    .attr("aria-hidden", "true");
+                const icon = $('<img>')
+                    .attr("src", "https://www.google.com/s2/favicons?domain=filmot.com")
+                    .css({
+                        "margin-left": "3px",
+                        "margin-top": "5px"
+                    });
+                iconWrapper.append(icon);
+                anchor.append(iconWrapper);
+                filmotButton.append(anchor);
+                item.find("button-view-model").before(filmotButton); // Add as first (leftmost) button
+            }
+        });
+    }
+    $("#TitleRestoredBtn").text(Object.keys(window.RecoveredIDS).length + " of " + Object.keys(window.DetectedIDS).length + " restored");
+}
+
 function processJSONResultFullView(fetched_details, format) {
     var darkMode = -1;
 
@@ -685,11 +800,17 @@ function processJSONResultFullView(fetched_details, format) {
             const escapedTitle = meta.title;
             var item = $(element);
 
+            //console.log(item);
+
             // Highlight just this specific item
             item.addClass("filmot_highlight");
 
             // 1. Handle New Title Structure via createElement
             var titleItemContainer = item.find("h3.ytLockupMetadataViewModelHeadingReset");
+            if (titleItemContainer.length==0) {
+                titleItemContainer = item.parent();
+            }
+
             var titleItem = titleItemContainer.find("a.ytLockupMetadataViewModelTitle");
 
             if (titleItem.length === 0) {
@@ -855,6 +976,7 @@ function processClick(format, nTry) {
         .then(data => {
         if (format == 1) {
             processJSONResultFullView(data, format);
+            processJSONResultFullViewOldFormat(data, format);
         } else if (format == 2) {
             processJSONResultSingleVideo(data, format);
         }
