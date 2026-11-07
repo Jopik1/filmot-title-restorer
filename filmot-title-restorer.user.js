@@ -755,10 +755,6 @@ function processJSONResultFullViewOldFormat(fetched_details, format) {
                 filmotButton = $(document.createElement('button-view-model'))
                     .addClass("filmot_button yt-spec-button-view-model")
                     .attr("id", "button-view-filmot")
-                    .css({
-                        "margin-right": "5px",
-                        "margin-top": "2vw"
-                });
                 const anchor = $('<a>')
                     .addClass("yt-spec-button-shape-next yt-spec-button-shape-next--filled yt-spec-button-shape-next--overlay yt-spec-button-shape-next--size-m yt-spec-button-shape-next--icon-leading yt-spec-button-shape-next--enable-backdrop-filter-experiment")
                     .attr({
@@ -782,7 +778,12 @@ function processJSONResultFullViewOldFormat(fetched_details, format) {
                 iconWrapper.append(icon);
                 anchor.append(iconWrapper);
                 filmotButton.append(anchor);
-                item.find("button-view-model").before(filmotButton); // Add as first (leftmost) button
+                var toggleButtons = item.find("toggle-button-view-model");
+                if (toggleButtons.length) {
+                    toggleButtons.last().parent().after(filmotButton);
+                } else {
+                    item.find("button-view-model").before(filmotButton);
+                }
             }
         });
     }
@@ -916,7 +917,12 @@ function processJSONResultFullView(fetched_details, format) {
             item.find(".ytThumbnailViewModelImage img.ytCoreImageHost").not(".filmot_newimg").addClass("filmot_hide").hide();
 
             // 4. Add Filmot button on the far right of the Title Section
-            let filmotButtonJQ = item.find("a#button-view-filmot");
+            var buttonScope = item.closest("ytd-playlist-video-renderer");
+            if (!buttonScope.length) buttonScope = item;
+            let filmotButtonJQ = buttonScope.find("#button-view-filmot");
+            if (!filmotButtonJQ.length && titleItemContainer.length) {
+                filmotButtonJQ = titleItemContainer.find("#button-view-filmot");
+            }
             if (filmotButtonJQ.length) {
                 // Button already exists, just update the URL
                 filmotButtonJQ.attr("href", "https://filmot.com/video/" + meta.id);
@@ -957,7 +963,10 @@ function processJSONResultFullView(fetched_details, format) {
                 filmotAnchor.appendChild(textSpan);
 
                 // Prepend to the title container row to sit alongside the link and IA button
-                if (titleItemContainer.length) {
+                var toggleButtons = buttonScope.find("toggle-button-view-model");
+                if (toggleButtons.length) {
+                    toggleButtons.last().parent().after($(filmotAnchor));
+                } else if (titleItemContainer.length) {
                     titleItemContainer.css("display", "block");
                     titleItemContainer.prepend($(filmotAnchor));
                 }
