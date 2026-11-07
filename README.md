@@ -4,6 +4,10 @@ Tampermonkey user script that restores titles for removed or private videos in Y
 
 Changelog:
 
+    7 November 2026 
+    Fixed to work with new YT layout - which caused all videos in the playlist to be detected as unavailable.
+    Merged dnicolson PR - button layout fix
+    
     27 June 2026
     Fixed to work with both new YT layout and old layout which was still present on some lists (Watch Later) - needs rework but works for now.
     
