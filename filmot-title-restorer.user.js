@@ -380,6 +380,9 @@ function extractIDsFullView() {
         // element == this == h3.ytLockupMetadataViewModelHeadingReset
 
         var titleContainer = $(this);
+        if (!titleContainer.closest("ytd-playlist-video-renderer, ytd-playlist-video-list-renderer").length) {
+            return;
+        }
         var ahref = titleContainer
             .closest("yt-lockup-view-model")
             .find('a[href*="/watch?v="]')
