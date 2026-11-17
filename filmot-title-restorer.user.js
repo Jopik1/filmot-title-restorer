@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Filmot Title Restorer
 // @namespace    http://tampermonkey.net/
-// @version      0.50
+// @version      0.51
 // @license GPL-3.0-or-later; https://www.gnu.org/licenses/gpl-3.0.txt
 // @description  Restores titles for removed or private videos in YouTube playlists
 // @author       Jopik
@@ -371,6 +371,8 @@ function extractIDsFullView() {
 
     var rendererSelector = "h3.ytLockupMetadataViewModelHeadingReset, h3.ytd-playlist-video-renderer";
     $(rendererSelector).filter(function() {
+        // Playlist cards also link to /watch, but represent collections rather than videos.
+        if ($(this).closest("yt-lockup-view-model").find("yt-collection-thumbnail-view-model, yt-collections-stack").length) return false;
         if ($(this).attr('aria-label') || $(this).find('a[aria-label]').attr('aria-label')) {
             return false;
         }
@@ -804,6 +806,7 @@ function processJSONResultFullView(fetched_details, format) {
         var itemSelector = "yt-lockup-view-model:has(a.ytLockupViewModelContentImage[href*='" + meta.id + "'])";
 
         $(itemSelector).each(function(index, element) {
+            if (element.querySelector("yt-collection-thumbnail-view-model, yt-collections-stack")) return;
             const escapedTitle = meta.title;
             var item = $(element);
 
