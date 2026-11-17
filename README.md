@@ -4,6 +4,9 @@ Tampermonkey user script that restores titles for removed or private videos in Y
 
 Changelog:
 
+    17 November 2026
+    Fix for recommended videos cards being detected as unavailable video cards, for example here when scrolling to the bottom https://www.youtube.com/playlist?list=PLF9mJC4RrjIhhEGuI2x4_WWaIyn9q7MzV
+
     7 November 2026 
     Fixed to work with new YT layout - which caused all videos in the playlist to be detected as unavailable.
     Merged dnicolson PR - button layout fix
